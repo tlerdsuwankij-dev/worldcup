@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup Game — Auto-Live (ESPN)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
+    --txt:#e6edf3; --muted:#9aa7b4; --accent:#facc15; --green:#34d399;
+    --red:#f87171; --blue:#60a5fa; --gold:#ffd23f; --silver:#cbd5e1; --bronze:#e08c5a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",Roboto,system-ui,sans-serif;padding:18px}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .statusbar{font-size:12px;margin-bottom:12px;padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);display:inline-block}
+  .statusbar.ok{border-color:#1f5140;color:var(--green)}
+  .statusbar.err{border-color:#7a5314;color:#fbbf24}
+  .statusbar.load{border-color:#234a6e;color:var(--blue)}
+  .grid{display:grid;grid-template-columns:1.05fr 1fr;gap:16px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{font-size:14px;margin:0 0 10px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted)}
+  .grp{margin-bottom:12px}
+  .grp-title{font-size:12px;font-weight:700;color:var(--accent);margin:0 0 6px;text-transform:uppercase;letter-spacing:.5px}
+  .team-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #232a36}
+  .team-name{font-size:14px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:13px;min-width:180px;cursor:pointer}
+  select:focus{outline:1px solid var(--accent)}
+  .pts-badge{font-size:11px;color:var(--muted);min-width:42px;text-align:right}
+  .lb-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #232a36}
+  .rank{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;background:var(--panel2);flex-shrink:0}
+  .rank.r1{background:var(--gold);color:#3a2e00}.rank.r2{background:var(--silver);color:#1b2430}.rank.r3{background:var(--bronze);color:#2b1500}
+  .lb-name{width:54px;font-weight:600;font-size:14px}
+  .bar-wrap{flex:1;background:#0a0e14;border-radius:6px;overflow:hidden;height:22px;position:relative}
+  .bar{height:100%;border-radius:6px;background:linear-gradient(90deg,#2563eb,#60a5fa);transition:width .35s ease}
+  .lb-pts{width:54px;text-align:right;font-weight:700;font-size:14px}
+  .lb-prize{width:92px;text-align:right;font-size:12px;color:var(--green)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  #refreshBtn{background:var(--blue);color:#06243a;border:none;font-weight:700}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:3px 9px;color:var(--muted)}
+  .chip b{color:var(--txt)}
+  .pool{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+  .pool b{color:var(--accent)}
+  table.detail{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  table.detail th,table.detail td{padding:4px 5px;text-align:center;border-bottom:1px solid #232a36}
+  table.detail th{color:var(--muted);font-weight:600}
+  table.detail td.tm{text-align:left}
+  .neg{color:var(--red)} .pos{color:var(--green)} .alive{color:var(--blue)}
+  .chartbox{height:300px;margin-top:6px}
+  .note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;border-top:1px solid var(--line);padding-top:10px}
+  .summary-wrap{margin-top:22px}
+  .summary-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .summary-bar h2{font-size:16px;margin:0}
+  #shotBtn{background:var(--accent);color:#3a2e00;border:none;font-weight:700}
+  #shotBtn:hover{filter:brightness(1.05)}
+  #summaryCard{background:linear-gradient(160deg,#11161f,#0c1118);border:1px solid #2c3444;border-radius:16px;padding:22px 22px 16px;max-width:920px}
+  .sc-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;border-bottom:2px solid #2c3444;padding-bottom:12px;margin-bottom:14px}
+  .sc-title{font-size:20px;font-weight:800;letter-spacing:.3px}
+  .sc-title span{color:var(--accent)}
+  .sc-meta{font-size:12px;color:var(--muted);text-align:right;line-height:1.5}
+  .sc-meta b{color:var(--txt)}
+  .sc-row{display:grid;grid-template-columns:34px 60px 1fr 56px 86px;align-items:center;gap:10px;padding:9px 8px;border-radius:10px}
+  .sc-row:nth-child(even){background:rgba(255,255,255,.025)}
+  .sc-row.top{background:rgba(250,204,21,.07)}
+  .sc-rank{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;background:var(--panel2)}
+  .sc-rank.r1{background:var(--gold);color:#3a2e00}.sc-rank.r2{background:var(--silver);color:#1b2430}.sc-rank.r3{background:var(--bronze);color:#2b1500}
+  .sc-name{font-weight:700;font-size:15px}
+  .sc-picks{display:flex;flex-wrap:wrap;gap:4px}
+  .pk{font-size:10.5px;padding:2px 6px;border-radius:6px;border:1px solid #2c3444;background:#161c27;white-space:nowrap}
+  .pk .pkp{color:var(--muted);margin-left:3px}
+  .pk.g{border-color:#5b2330;background:#241319}
+  .pk.win{border-color:#1f5140;background:#10231c}
+  .pk.al{border-color:#234a6e;background:#11202e}
+  .sc-pts{text-align:right;font-weight:800;font-size:17px}
+  .sc-prize{text-align:right;font-size:12px;color:var(--green);font-weight:700}
+  .sc-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #2c3444;font-size:11px;color:var(--muted)}
+  .sc-foot .lg{display:flex;gap:10px;flex-wrap:wrap}
+  .sc-foot .dotg{color:#f87171}.sc-foot .dotw{color:#34d399}.sc-foot .dota{color:#60a5fa}
+</style>
+</head>
+<body>
+  <h1>⚽ World Cup 2026 Game — Auto-Live Scoreboard</h1>
+  <div class="sub">10 players · ฿1,000 each · pot ฿10,000. Results auto-update from ESPN's public feed each time you open or refresh.</div>
+  <div id="statusbar" class="statusbar load">⏳ Loading live scores…</div>
+
+  <div class="controls">
+    <button id="refreshBtn">↻ Refresh from ESPN now</button>
+    <button id="snapBtn">⤺ Restore built-in snapshot</button>
+    <button id="resetBtn">↺ Clear all</button>
+    <span class="pool" id="poolInfo"></span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Team Results <span style="text-transform:none;color:var(--muted);font-weight:400">— auto-filled, editable</span></h2>
+      <div id="teamGrid"></div>
+      <div class="legend">
+        <span class="chip">Champion <b>120</b></span>
+        <span class="chip">Runner-up <b>90</b></span>
+        <span class="chip">3rd <b>65</b></span>
+        <span class="chip">4th <b>50</b></span>
+        <span class="chip">QF <b>30</b></span>
+        <span class="chip">R16 <b>15</b></span>
+        <span class="chip">R32 <b>5</b></span>
+        <span class="chip">Group out <b style="color:var(--red)">−40</b></span>
+        <span class="chip"><span class="dot" style="background:var(--blue)"></span>Still in <b>≥ floor</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Leaderboard <span style="text-transform:none;color:var(--muted);font-weight:400">— live points (incl. guaranteed floors)</span></h2>
+      <div id="leaderboard"></div>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+      <h2 style="margin-top:18px">Full pick &amp; points breakdown</h2>
+      <div style="overflow:auto"><table class="detail" id="detailTbl"></table></div>
+      <div class="note" id="liveNote"></div>
+    </div>
+  </div>
+
+  <div class="summary-wrap">
+    <div class="summary-bar">
+      <h2>📸 Summary — everyone at a glance</h2>
+      <button id="shotBtn">⬇ Save as PNG</button>
+      <span style="font-size:12px;color:var(--muted)">One clean image with all 10 players, picks, points &amp; prize.</span>
+    </div>
+    <div id="summaryCard"></div>
+  </div>
+
+<script>
+// ===== PLAYERS & PICKS =====
+const PLAYERS = ["TUL","Vor","Yo","Fame","Bank","Kirk","Dha","Jill","Jew","Win"];
+const PICKS = {
+  TUL : ["England","Croatia","Japan","Morocco","USA","Brazil","Uzbekistan"],
+  Vor : ["Portugal","Croatia","Japan","Morocco","Mexico","Argentina","Turkey"],
+  Yo  : ["Spain","Switzerland","Japan","Morocco","Mexico","Argentina","Norway"],
+  Fame: ["England","Switzerland","Japan","Morocco","USA","Brazil","Mexico"],
+  Bank: ["England","Norway","Japan","Morocco","USA","Brazil","Scotland"],
+  Kirk: ["Portugal","Turkey","Uzbekistan","Ivory Coast","Canada","Uruguay","Scotland"],
+  Dha : ["France","Norway","Japan","Morocco","Mexico","Argentina","Turkey"],
+  Jill: ["Spain","Croatia","South Korea","Morocco","USA","Argentina","Norway"],
+  Jew : ["Spain","Croatia","Japan","Morocco","USA","Argentina","Mexico"],
+  Win : ["Portugal","Switzerland","South Korea","Egypt","Mexico","Argentina","Croatia"]
+};
+const GROUPS = [
+  ["UEFA 1",    ["England","Portugal","Spain","France"]],
+  ["UEFA 2",    ["Croatia","Switzerland","Norway","Turkey","Scotland"]],
+  ["AFC + OFC", ["Japan","South Korea","Uzbekistan"]],
+  ["CAF",       ["Morocco","Ivory Coast","Egypt"]],
+  ["CONCACAF",  ["USA","Mexico","Canada"]],
+  ["CONMEBOL",  ["Brazil","Argentina","Uruguay"]]
+];
+
+const STAGES = [
+  ["none","—",0,"x"],
+  ["alive32","🔵 Still in — Round of 32 (≥5)",5,"live"],
+  ["alive16","🔵 Still in — Round of 16 (≥15)",15,"live"],
+  ["aliveqf","🔵 Still in — Quarter-final (≥30)",30,"live"],
+  ["alivesf","🔵 Still in — Semi-final (≥50)",50,"live"],
+  ["alivef","🔵 Still in — Final (≥90)",90,"live"],
+  ["champion","🏆 Champion",120,"final"],
+  ["runnerup","🥈 Runner-up",90,"final"],
+  ["third","🥉 3rd place",65,"final"],
+  ["fourth","4th place",50,"final"],
+  ["qf","Out at QF (top 8)",30,"final"],
+  ["r16","Out at R16 (top 16)",15,"final"],
+  ["r32","Out at R32 (top 32)",5,"final"],
+  ["group","Out in group stage",-40,"final"]
+];
+const STAGE_PTS = Object.fromEntries(STAGES.map(s=>[s[0],s[2]]));
+const STAGE_LBL = Object.fromEntries(STAGES.map(s=>[s[0],s[1]]));
+const isAlive = k=>k.startsWith("alive");
+
+// ===== BUILT-IN SNAPSHOT (fallback if ESPN unreachable) — 30 Jun 2026 =====
+const SNAPSHOT = {
+  England:"alive32", Portugal:"alive32", Spain:"alive32", France:"alive32",
+  Croatia:"alive32", Switzerland:"alive32", Norway:"alive32", Turkey:"group", Scotland:"group",
+  Japan:"r32", "South Korea":"group", Uzbekistan:"group",
+  Morocco:"alive32", "Ivory Coast":"alive32", Egypt:"alive32",
+  USA:"alive32", Mexico:"alive32", Canada:"alive16",
+  Brazil:"alive16", Argentina:"alive32", Uruguay:"group"
+};
+const result = {};
+GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
+
+// ===== ESPN NAME MATCHING =====
+function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z]/g,"");}
+const TEAMSET={};
+GROUPS.forEach(([_,ts])=>ts.forEach(t=>TEAMSET[norm(t)]=t));
+[["united states","USA"],["usa","USA"],["cote d'ivoire","Ivory Coast"],["ivory coast","Ivory Coast"],
+ ["korea republic","South Korea"],["south korea","South Korea"],["turkiye","Turkey"]]
+ .forEach(([k,v])=>TEAMSET[norm(k)]=v);
+function canon(n){return TEAMSET[norm(n)]||null;}
+
+// ===== ESPN ROUND RULES =====  [winnerStatus, loserStatus]
+const ROUND_ORDER={"round-of-32":1,"round-of-16":2,"quarterfinals":3,"semifinals":4,"3rd-place":5,"third-place":5,"final":6};
+const OUTCOME={
+  "round-of-32":["alive16","r32"], "round-of-16":["aliveqf","r16"],
+  "quarterfinals":["alivesf","qf"], "semifinals":["alivef","alivesf"],
+  "3rd-place":["third","fourth"], "third-place":["third","fourth"], "final":["champion","runnerup"]
+};
+
+let autoMode=true; // ESPN fills results; manual edits flip this off until next refresh
+const ESPN="https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=";
+function koDates(){const out=[];let d=new Date("2026-06-28T12:00:00Z");const end=new Date("2026-07-19T12:00:00Z");
+  while(d<=end){out.push(d.toISOString().slice(0,10).replace(/-/g,""));d.setUTCDate(d.getUTCDate()+1);}return out;}
+
+function setStatus(cls,msg){const el=document.getElementById("statusbar");el.className="statusbar "+cls;el.innerHTML=msg;}
+
+async function fetchLive(){
+  setStatus("load","⏳ Fetching live scores from ESPN…");
+  let events=[];
+  try{
+    const res=await Promise.allSettled(koDates().map(d=>fetch(ESPN+d).then(r=>r.json())));
+    res.forEach(r=>{if(r.status==="fulfilled"&&r.value&&r.value.events)events=events.concat(r.value.events);});
+  }catch(e){fallback("Network blocked");return;}
+  if(!events.length){fallback("No data returned");return;}
+
+  const best={};let done=0;
+  events.forEach(ev=>{
+    const comp=ev.competitions&&ev.competitions[0];if(!comp)return;
+    if(!(comp.status&&comp.status.type&&comp.status.type.completed))return;
+    const slug=(ev.season&&ev.season.slug)||"";const ord=ROUND_ORDER[slug];if(!ord)return;
+    const cs=comp.competitors||[];if(cs.length<2)return;
+    let counted=false;
+    cs.forEach(c=>{
+      const t=canon(c.team&&(c.team.displayName||c.team.name));if(!t)return;
+      const st=OUTCOME[slug][c.winner===true?0:1];if(!st)return;
+      if(!best[t]||ord>=best[t].order)best[t]={order:ord,status:st};
+      counted=true;
+    });
+    if(counted)done++;
+  });
+
+  // Start from snapshot, override with live completed results
+  GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
+  Object.keys(best).forEach(t=>{if(result[t]!==undefined)result[t]=best[t].status;});
+  syncSelects(); autoMode=true;
+  const now=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+  if(done===0){
+    setStatus("err",`🟡 Connected to ESPN (${now}), but its feed lists no <i>completed</i> knockout games yet — showing the built-in snapshot. This page will fill in automatically the moment ESPN publishes finished results.`);
+  }else{
+    setStatus("ok",`🟢 Live from ESPN · ${done} completed knockout games · updated ${now}. <span style="color:var(--muted)">Auto-refreshes every 3 min; you can still edit any dropdown manually.</span>`);
+  }
+  render();
+}
+function fallback(reason){
+  GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
+  syncSelects();
+  setStatus("err",`🟠 Couldn't reach the live feed (${reason}) — showing the built-in 30 Jun snapshot. Edit dropdowns manually or try Refresh.`);
+  render();
+}
+function syncSelects(){document.querySelectorAll("select").forEach(s=>{if(result[s.dataset.team]!==undefined)s.value=result[s.dataset.team];});}
+
+// ===== BUILD TEAM GRID =====
+const teamGrid=document.getElementById("teamGrid");
+GROUPS.forEach(([gname,teams])=>{
+  const wrap=document.createElement("div");wrap.className="grp";
+  wrap.innerHTML=`<div class="grp-title">${gname}</div>`;
+  teams.forEach(t=>{
+    const row=document.createElement("div");row.className="team-row";
+    const sel=document.createElement("select");sel.dataset.team=t;
+    let cur="";
+    STAGES.forEach(([k,lbl,pts,grp])=>{
+      if(grp!==cur){cur=grp;if(grp==="live")sel.appendChild(mkOpt("— Still playing —"));if(grp==="final")sel.appendChild(mkOpt("— Final placing —"));}
+      const o=document.createElement("option");o.value=k;o.textContent=lbl;sel.appendChild(o);
+    });
+    sel.value=result[t];
+    sel.addEventListener("change",e=>{result[t]=e.target.value;autoMode=false;
+      setStatus("err","✏️ Manual edit in effect — your changes show until the next ESPN refresh.");render();});
+    const dot=document.createElement("span");dot.className="dot";dot.dataset.dot=t;
+    const badge=document.createElement("span");badge.className="pts-badge";badge.dataset.badge=t;
+    const left=document.createElement("span");left.className="team-name";left.appendChild(dot);
+    left.appendChild(document.createTextNode(t));
+    const right=document.createElement("div");right.style.cssText="display:flex;align-items:center;gap:8px";
+    right.appendChild(sel);right.appendChild(badge);
+    row.appendChild(left);row.appendChild(right);
+    wrap.appendChild(row);
+  });
+  teamGrid.appendChild(wrap);
+});
+function mkOpt(txt){const o=document.createElement("option");o.disabled=true;o.textContent=txt;o.style.color="#888";return o;}
+
+// ===== CHART =====
+let chart;
+function initChart(){
+  chart=new Chart(document.getElementById("chart"),{
+    type:"bar",
+    data:{labels:[],datasets:[{label:"Points",data:[],backgroundColor:"#60a5fa",borderRadius:5}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+c.raw+" pts"}}},
+      scales:{x:{grid:{color:"#222a36"},ticks:{color:"#9aa7b4"}},
+              y:{grid:{display:false},ticks:{color:"#e6edf3",font:{weight:"600"}}}}}
+  });
+}
+
+// ===== SCORING =====
+function playerScore(p){let total=0;const parts=[];
+  PICKS[p].forEach(team=>{const pts=STAGE_PTS[result[team]];total+=pts;parts.push({team,pts,stage:result[team]});});
+  return {total,parts};}
+
+function render(){
+  document.querySelectorAll("[data-badge]").forEach(b=>{
+    const k=result[b.dataset.badge],v=STAGE_PTS[k];
+    b.textContent=isAlive(k)?"≥"+v:(v>0?"+":"")+v;
+    b.style.color=isAlive(k)?"var(--blue)":v>0?"var(--green)":v<0?"var(--red)":"var(--muted)";
+  });
+  document.querySelectorAll("[data-dot]").forEach(d=>{
+    const k=result[d.dataset.dot];
+    d.style.background=isAlive(k)?"var(--blue)":k==="group"?"var(--red)":k==="none"?"#3a4150":"var(--green)";
+  });
+
+  const rows=PLAYERS.map(p=>({p,...playerScore(p)})).sort((a,b)=>b.total-a.total);
+  const max=Math.max(60,...rows.map(r=>Math.abs(r.total)));
+  const pot=PLAYERS.length*1000,prizeMap={};
+  prizeMap[rows[0].p]=pot*0.75;
+  prizeMap[rows[1].p]=(prizeMap[rows[1].p]||0)+pot*0.20;
+  const tfl=rows[rows.length-3];prizeMap[tfl.p]=(prizeMap[tfl.p]||0)+pot*0.05;
+
+  const lb=document.getElementById("leaderboard");lb.innerHTML="";
+  rows.forEach((r,i)=>{
+    const div=document.createElement("div");div.className="lb-row";
+    const w=Math.max(2,(Math.abs(r.total)/max)*100),neg=r.total<0;
+    const prize=prizeMap[r.p]?("฿"+prizeMap[r.p].toLocaleString()):"";
+    div.innerHTML=`<div class="rank ${i<3?'r'+(i+1):''}">${i+1}</div>
+      <div class="lb-name">${r.p}</div>
+      <div class="bar-wrap"><div class="bar" style="width:${w}%;${neg?'background:linear-gradient(90deg,#b91c1c,#f87171)':''}"></div></div>
+      <div class="lb-pts" style="${neg?'color:var(--red)':''}">${r.total}</div>
+      <div class="lb-prize">${prize}</div>`;
+    lb.appendChild(div);
+  });
+  chart.data.labels=rows.map(r=>r.p);
+  chart.data.datasets[0].data=rows.map(r=>r.total);
+  chart.data.datasets[0].backgroundColor=rows.map(r=>r.total<0?"#f87171":"#60a5fa");
+  chart.update();
+  document.getElementById("poolInfo").innerHTML=
+    `Pot <b>฿${pot.toLocaleString()}</b> · 1st <b>฿${(pot*0.75).toLocaleString()}</b> · 2nd <b>฿${(pot*0.20).toLocaleString()}</b> · 3rd-from-last <b>฿${(pot*0.05).toLocaleString()}</b>`;
+  buildDetail(rows);
+  buildSummary(rows,prizeMap,pot);
+}
+
+function buildSummary(rows,prizeMap,pot){
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+  let h=`<div class="sc-head">
+      <div class="sc-title">⚽ World Cup 2026 <span>Game Standings</span></div>
+      <div class="sc-meta">10 players · ฿1,000 each · pot <b>฿${pot.toLocaleString()}</b><br>Live as of <b>${today}</b></div>
+    </div>`;
+  rows.forEach((r,i)=>{
+    const medal=i<3?'r'+(i+1):'';
+    const prize=prizeMap[r.p]?'฿'+prizeMap[r.p].toLocaleString():'—';
+    const chips=r.parts.map(pt=>{
+      const a=isAlive(pt.stage),cls=a?'al':pt.stage==='group'?'g':pt.pts>0?'win':'';
+      const v=a?'≥'+pt.pts:(pt.pts>0?'+'+pt.pts:pt.pts);
+      return `<span class="pk ${cls}">${pt.team}<span class="pkp">${v}</span></span>`;
+    }).join('');
+    h+=`<div class="sc-row ${i===0?'top':''}">
+      <div class="sc-rank ${medal}">${i+1}</div>
+      <div class="sc-name">${r.p}</div>
+      <div class="sc-picks">${chips}</div>
+      <div class="sc-pts" style="${r.total<0?'color:var(--red)':''}">${r.total}</div>
+      <div class="sc-prize">${prize}</div>
+    </div>`;
+  });
+  h+=`<div class="sc-foot">
+      <div class="lg"><span class="dota">●</span> still in (floor pts) &nbsp; <span class="dotw">●</span> finished, scored points &nbsp; <span class="dotg">●</span> out in groups (−40)</div>
+      <div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div>
+    </div>`;
+  document.getElementById("summaryCard").innerHTML=h;
+}
+
+function buildDetail(rows){
+  const cols=["UEFA1","UEFA2","AFC/OFC","CAF","CONCACAF","CONMEBOL","7th","TOTAL"];
+  let html="<tr><th>Player</th>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
+  rows.forEach(r=>{
+    html+=`<tr><td class="tm"><b>${r.p}</b></td>`;
+    r.parts.forEach(pt=>{
+      const cls=isAlive(pt.stage)?"alive":pt.pts>0?"pos":pt.pts<0?"neg":"";
+      const val=isAlive(pt.stage)?"≥"+pt.pts:(pt.pts>0?'+':'')+pt.pts;
+      html+=`<td class="${cls}" title="${STAGE_LBL[pt.stage]}">${pt.team}<br><span style="color:var(--muted);font-size:11px">${val}</span></td>`;
+    });
+    html+=`<td><b>${r.total}</b></td></tr>`;
+  });
+  document.getElementById("detailTbl").innerHTML=html;
+}
+
+// ===== CONTROLS =====
+document.getElementById("refreshBtn").onclick=fetchLive;
+document.getElementById("snapBtn").onclick=()=>{
+  GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
+  syncSelects();autoMode=false;
+  setStatus("err","⤺ Showing the built-in 30 Jun snapshot. Press Refresh for live ESPN data.");render();
+};
+document.getElementById("resetBtn").onclick=()=>{
+  Object.keys(result).forEach(t=>result[t]="none");
+  syncSelects();autoMode=false;setStatus("err","↺ Cleared. Press Refresh for live ESPN data.");render();
+};
+document.getElementById("shotBtn").onclick=()=>{
+  html2canvas(document.getElementById("summaryCard"),{backgroundColor:"#0c1118",scale:2}).then(canvas=>{
+    const a=document.createElement("a");
+    a.download="worldcup_standings_"+new Date().toISOString().slice(0,10)+".png";
+    a.href=canvas.toDataURL("image/png");a.click();
+  });
+};
+
+document.getElementById("liveNote").innerHTML=
+  `<b>How it stays live:</b> When you open this page it pulls every World Cup 2026 knockout result from ESPN's public feed and auto-fills each team — losers get the points for the round they exited (R32 +5 → champion 120), and teams still playing count their guaranteed floor (R16 ≥15, etc.). It re-checks every 3 minutes while open, and the “Refresh” button forces an update. No PC scheduling needed — it’s fresh whenever the page is open and online. ` +
+  `<br><br><b>Notes:</b> Group-stage exits (−40) come from the built-in snapshot since ESPN's feed only names teams once a knockout game is played. If the feed is ever unreachable, it falls back to the saved snapshot and you can edit any dropdown by hand. Data: ESPN public sports feed.`;
+
+initChart();
+fetchLive();
+setInterval(()=>{ if(autoMode) fetchLive(); }, 180000);
+</script>
+</body>
+</html>
