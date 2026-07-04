@@ -84,12 +84,57 @@
   .sc-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #2c3444;font-size:11px;color:var(--muted)}
   .sc-foot .lg{display:flex;gap:10px;flex-wrap:wrap}
   .sc-foot .dotg{color:#f87171}.sc-foot .dotw{color:#34d399}.sc-foot .dota{color:#60a5fa}
+  /* ===== Bottom grid: summary + player explorer ===== */
+  .bottom-grid{display:grid;grid-template-columns:1.25fr .9fr;gap:16px;align-items:start;margin-top:22px}
+  @media(max-width:900px){.bottom-grid{grid-template-columns:1fr}}
+  .bottom-grid .summary-wrap{margin-top:0}
+  .explorer{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .explorer .ex-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .explorer h2{font-size:16px;margin:0}
+  .ex-meta{font-size:13px;color:var(--muted);margin:4px 0 8px}
+  .ex-meta b{color:var(--txt)}
+  .ex-meta .rk{color:var(--accent)}
+  .wi-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:var(--muted)}
+  .wi-controls select{min-width:130px}
+  .wi-btn{padding:5px 10px}
+  .wi-btn.on{background:var(--blue);color:#06243a;border:none;font-weight:700}
+  .wi-head{display:grid;grid-template-columns:26px 1fr 50px 52px 40px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:0 4px 4px}
+  .wi-head span:nth-child(n+3){text-align:right}
+  .wi-row{display:grid;grid-template-columns:26px 1fr 50px 52px 40px;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #232a36;font-size:13px}
+  .wi-rank{width:24px;height:24px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .wi-rank.r1{background:var(--gold);color:#3a2e00}.wi-rank.r2{background:var(--silver);color:#1b2430}.wi-rank.r3{background:var(--bronze);color:#2b1500}
+  .wi-name{font-weight:600}
+  .wi-pts{text-align:right;font-weight:700}
+  .wi-delta,.wi-move{text-align:right;font-weight:600}
+  .up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--muted)}
+  /* ===== Win probability (Opta Monte Carlo) ===== */
+  .prob-wrap{margin-top:16px}
+  .prob-grid{display:grid;grid-template-columns:1fr 1.35fr;gap:18px;align-items:start}
+  @media(max-width:900px){.prob-grid{grid-template-columns:1fr}}
+  .prob-sub{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px}
+  .pt-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed #232a36;font-size:13px}
+  .pt-row .nm{flex:1}
+  .pt-row input{width:60px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:13px;text-align:right}
+  .tag{font-size:9px;padding:1px 5px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+  .tag.opta{color:#a78bfa;border-color:#4c3b7a}
+  .pb-head{display:grid;grid-template-columns:26px 54px 1fr 44px 46px;gap:8px;font-size:10px;text-transform:uppercase;color:var(--muted);letter-spacing:.4px;padding-bottom:4px}
+  .pb-head span:nth-child(n+4){text-align:right}
+  .pb-row{display:grid;grid-template-columns:26px 54px 1fr 44px 46px;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid #232a36;font-size:13px}
+  .pb-bar-wrap{background:#0a0e14;border-radius:5px;height:18px;overflow:hidden;position:relative}
+  .pb-bar{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:5px}
+  .pb-bar-lbl{position:absolute;left:6px;top:0;line-height:18px;font-size:11px;font-weight:700}
+  .pb-sec,.pb-cons{text-align:right;color:var(--muted);font-size:12px}
+  .opta-row{display:grid;grid-template-columns:1.1fr 34px 34px 34px 48px 40px;gap:4px;font-size:12px;padding:4px 2px;border-bottom:1px solid #232a36;text-align:right}
+  .opta-row .nm{text-align:left;font-weight:600}
+  .opta-head{color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.3px}
+  .opta-row .ch{color:#a78bfa;font-weight:700}
 </style>
 </head>
 <body>
   <h1>⚽ World Cup 2026 Game — Auto-Live Scoreboard</h1>
   <div class="sub">10 players · ฿1,000 each · pot ฿10,000. Results auto-update from ESPN's public feed each time you open or refresh.</div>
   <div id="statusbar" class="statusbar load">⏳ Loading live scores…</div>
+  <div class="stamp" style="font-size:12px;color:var(--accent);margin:-6px 0 12px">📊 Win-odds use Opta stage projections (hub, 3 Jul 2026).</div>
 
   <div class="controls">
     <button id="refreshBtn">↻ Refresh from ESPN now</button>
@@ -125,16 +170,66 @@
     </div>
   </div>
 
-  <div class="summary-wrap">
-    <div class="summary-bar">
-      <h2>📸 Summary — everyone at a glance</h2>
-      <button id="shotBtn">⬇ Save as PNG</button>
-      <span style="font-size:12px;color:var(--muted)">One clean image with all 10 players, picks, points &amp; prize.</span>
+  <div class="bottom-grid">
+    <div class="summary-wrap">
+      <div class="summary-bar">
+        <h2>📸 Summary — everyone at a glance</h2>
+        <button id="shotBtn">⬇ Save as PNG</button>
+        <span style="font-size:12px;color:var(--muted)">One clean image with all 10 players, picks, points &amp; prize.</span>
+      </div>
+      <div id="summaryCard"></div>
     </div>
-    <div id="summaryCard"></div>
+
+    <div class="explorer">
+      <div class="ex-head"><h2>🔮 What-if simulator</h2></div>
+      <div class="wi-controls">
+        <span>If</span>
+        <select id="wiTeam"></select>
+        <button id="wiWin" class="wi-btn on">advances ▲</button>
+        <button id="wiLose" class="wi-btn">is out ▼</button>
+      </div>
+      <div class="ex-meta" id="wiNote"></div>
+      <div class="wi-head"><span></span><span>Player</span><span>Proj.</span><span>Δ pts</span><span>Rank</span></div>
+      <div id="wiBoard"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Pick one of <i>your</i> teams and whether it wins its next match (advances a round) or loses (knocked out). No opponent needed — only your pool's teams score. Advancing lifts that team's backers to the next floor; a loss usually holds (floor already banked). Hypothetical only.</div>
+    </div>
+  </div>
+
+  <div class="prob-wrap card">
+    <div class="ex-head" style="justify-content:space-between;width:100%">
+      <h2>🎲 Chance to win the pot <span style="text-transform:none;color:var(--muted);font-weight:400">— Opta-powered Monte Carlo</span></h2>
+      <div style="display:flex;gap:8px">
+        <button id="optaBtn">📋 Update Opta %</button>
+        <button id="simBtn">↻ Re-run sims</button>
+      </div>
+    </div>
+    <div id="optaPanel" style="display:none;margin:10px 0">
+      <div class="prob-sub">Select the Opta hub table with your mouse, Ctrl+C, and paste the WHOLE thing here — headers, "team logo" prefixes and extra columns (Top Group, L32) are handled automatically.</div>
+      <textarea id="optaText" rows="7" style="width:100%;box-sizing:border-box;background:#0c1118;color:#e6edf3;border:1px solid #222a36;border-radius:6px;padding:8px;font:12px monospace" placeholder="team logoFrance&#10;100.00%	100.00%	100.00%	86.62%	67.39%	44.68%	28.89%&#10;team logoArgentina&#10;100.00%	100.00%	100.00%	79.72%	53.91%	31.12%	16.32%&#10;…exactly as copied from the hub — or simple lines like:  France 86.6 67.4 44.7 28.9"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input id="optaFeedUrl" placeholder="optional: JSON feed URL (DevTools → Network → Fetch/XHR on the Opta hub)" style="flex:1;background:#0c1118;color:#e6edf3;border:1px solid #222a36;border-radius:6px;padding:6px 8px;font-size:12px">
+        <button id="optaFetchBtn">Fetch feed</button>
+        <button id="optaApplyBtn">Apply pasted</button>
+        <button id="optaDlBtn" title="Save the current probabilities as opta.json — upload it to the GitHub repo to publish to all visitors">⬇ opta.json</button>
+      </div>
+      <div class="note" id="optaMsg"></div>
+    </div>
+    <div class="prob-grid">
+      <div>
+        <div class="prob-sub">Opta reach-% per stage → expected points (xPts)</div>
+        <div id="probTeams"></div>
+      </div>
+      <div>
+        <div class="prob-sub">Player odds · 10,000 bracket simulations</div>
+        <div class="pb-head"><span></span><span>Player</span><span>Win pot</span><span>2nd</span><span>Cons.</span></div>
+        <div id="probBoard"></div>
+      </div>
+    </div>
+    <div class="note" id="probNote"></div>
   </div>
 
 <script>
+// World Cup 2026 game — auto-live (ESPN) + what-if simulator
 // ===== PLAYERS & PICKS =====
 const PLAYERS = ["TUL","Vor","Yo","Fame","Bank","Kirk","Dha","Jill","Jew","Win"];
 const PICKS = {
@@ -180,12 +275,12 @@ const isAlive = k=>k.startsWith("alive");
 
 // ===== BUILT-IN SNAPSHOT (fallback if ESPN unreachable) — 30 Jun 2026 =====
 const SNAPSHOT = {
-  England:"alive32", Portugal:"alive32", Spain:"alive32", France:"alive32",
-  Croatia:"alive32", Switzerland:"alive32", Norway:"alive32", Turkey:"group", Scotland:"group",
+  England:"alive16", Portugal:"alive16", Spain:"alive16", France:"alive16",
+  Croatia:"r32", Switzerland:"alive16", Norway:"alive16", Turkey:"group", Scotland:"group",
   Japan:"r32", "South Korea":"group", Uzbekistan:"group",
-  Morocco:"alive32", "Ivory Coast":"alive32", Egypt:"alive32",
-  USA:"alive32", Mexico:"alive32", Canada:"alive16",
-  Brazil:"alive16", Argentina:"alive32", Uruguay:"group"
+  Morocco:"alive16", "Ivory Coast":"r32", Egypt:"alive16",
+  USA:"alive16", Mexico:"alive16", Canada:"alive16",
+  Brazil:"alive16", Argentina:"alive16", Uruguay:"group"
 };
 const result = {};
 GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
@@ -223,12 +318,17 @@ async function fetchLive(){
   }catch(e){fallback("Network blocked");return;}
   if(!events.length){fallback("No data returned");return;}
 
-  const best={};let done=0;
+  const best={};let done=0;const fixtures={};
   events.forEach(ev=>{
     const comp=ev.competitions&&ev.competitions[0];if(!comp)return;
-    if(!(comp.status&&comp.status.type&&comp.status.type.completed))return;
     const slug=(ev.season&&ev.season.slug)||"";const ord=ROUND_ORDER[slug];if(!ord)return;
     const cs=comp.competitors||[];if(cs.length<2)return;
+    if(!(comp.status&&comp.status.type&&comp.status.type.completed)){
+      // pending knockout game → remember the pairing for the bracket simulation
+      const names=cs.map(c=>{const raw=c.team&&(c.team.displayName||c.team.name);return canon(raw)||raw;});
+      if(names[0]&&names[1])(fixtures[slug]=fixtures[slug]||[]).push([names[0],names[1]]);
+      return;
+    }
     let counted=false;
     cs.forEach(c=>{
       const t=canon(c.team&&(c.team.displayName||c.team.name));if(!t)return;
@@ -242,6 +342,7 @@ async function fetchLive(){
   // Start from snapshot, override with live completed results
   GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
   Object.keys(best).forEach(t=>{if(result[t]!==undefined)result[t]=best[t].status;});
+  applyFixtures(fixtures);
   syncSelects(); autoMode=true;
   const now=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
   if(done===0){
@@ -301,6 +402,54 @@ function initChart(){
   });
 }
 
+// ===== WHAT-IF MATCH SIMULATOR =====
+const ADV ={alive32:"alive16",alive16:"aliveqf",aliveqf:"alivesf",alivesf:"alivef",alivef:"champion"};
+const ELIM={alive32:"r32",alive16:"r16",aliveqf:"qf",alivesf:"fourth",alivef:"runnerup"};
+const RLBL={alive32:"R32",alive16:"R16",aliveqf:"QF",alivesf:"SF",alivef:"Final"};
+let wiTeam,wiOutcome="win";
+function scoreWith(res,p){return PICKS[p].reduce((s,t)=>s+STAGE_PTS[res[t]],0);}
+function rankOf(res){const list=PLAYERS.map(p=>({p,t:scoreWith(res,p)})).sort((a,b)=>b.t-a.t);
+  const rank={},tot={};list.forEach((o,i)=>{rank[o.p]=i+1;tot[o.p]=o.t;});return {list,rank,tot};}
+function aliveTeams(){const a=[];GROUPS.forEach(([_,ts])=>ts.forEach(t=>{if(isAlive(result[t]))a.push(t);}));return a;}
+function toggleWiBtns(){document.getElementById("wiWin").classList.toggle("on",wiOutcome==="win");
+  document.getElementById("wiLose").classList.toggle("on",wiOutcome==="lose");}
+function initWhatif(){
+  wiTeam=document.getElementById("wiTeam");
+  wiTeam.addEventListener("change",simulate);
+  document.getElementById("wiWin").addEventListener("click",()=>{wiOutcome="win";toggleWiBtns();simulate();});
+  document.getElementById("wiLose").addEventListener("click",()=>{wiOutcome="lose";toggleWiBtns();simulate();});
+}
+function refreshWiTeam(){
+  const alive=aliveTeams(),prev=wiTeam.value;wiTeam.innerHTML="";
+  alive.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t+" — in "+(RLBL[result[t]]||"");wiTeam.appendChild(o);});
+  if(alive.includes(prev))wiTeam.value=prev; else if(alive.length)wiTeam.value=alive[0];
+}
+function simulate(){
+  if(!wiTeam)return;
+  refreshWiTeam();
+  const board=document.getElementById("wiBoard"),note=document.getElementById("wiNote");
+  const alive=aliveTeams();
+  if(!alive.length){note.textContent="No teams still alive to simulate — the tournament results are final.";board.innerHTML="";return;}
+  const T=wiTeam.value;
+  const r2=Object.assign({},result);
+  r2[T]=wiOutcome==="win"?(ADV[result[T]]||result[T]):(ELIM[result[T]]||result[T]);
+  const cur=rankOf(result),proj=rankOf(r2);
+  const verb=wiOutcome==="win"?"wins &amp; advances to":"is knocked out →";
+  note.innerHTML=`If <b>${T}</b> ${verb} <b>${STAGE_LBL[r2[T]]}</b>:`;
+  let html="";
+  proj.list.forEach((o,i)=>{
+    const dp=o.t-cur.tot[o.p], rc=cur.rank[o.p]-(i+1);
+    const dcls=dp>0?"up":dp<0?"down":"flat", mcls=rc>0?"up":rc<0?"down":"flat";
+    const move=rc>0?"▲"+rc:rc<0?"▼"+(-rc):"–";
+    html+=`<div class="wi-row"><div class="wi-rank ${i<3?'r'+(i+1):''}">${i+1}</div>
+      <div class="wi-name">${o.p}</div>
+      <div class="wi-pts" style="${o.t<0?'color:var(--red)':''}">${o.t}</div>
+      <div class="wi-delta ${dcls}">${dp>0?'+'+dp:dp}</div>
+      <div class="wi-move ${mcls}">${move}</div></div>`;
+  });
+  board.innerHTML=html;
+}
+
 // ===== SCORING =====
 function playerScore(p){let total=0;const parts=[];
   PICKS[p].forEach(team=>{const pts=STAGE_PTS[result[team]];total+=pts;parts.push({team,pts,stage:result[team]});});
@@ -344,6 +493,8 @@ function render(){
     `Pot <b>฿${pot.toLocaleString()}</b> · 1st <b>฿${(pot*0.75).toLocaleString()}</b> · 2nd <b>฿${(pot*0.20).toLocaleString()}</b> · 3rd-from-last <b>฿${(pot*0.05).toLocaleString()}</b>`;
   buildDetail(rows);
   buildSummary(rows,prizeMap,pot);
+  simulate();
+  probSim();
 }
 
 function buildSummary(rows,prizeMap,pot){
@@ -390,8 +541,368 @@ function buildDetail(rows){
   document.getElementById("detailTbl").innerHTML=html;
 }
 
+// ===== WIN PROBABILITY — driven by Opta's stage-reach probabilities =====
+// Each value = Opta's % chance the team REACHES that stage (L16..CH). Source: theanalyst.com predictions hub.
+let OPTA_DATE="4 Jul 2026";
+const OPTA={
+  France:{L16:100,QF:86.62,SF:67.39,FIN:44.68,CH:28.89},
+  Argentina:{L16:100,QF:79.72,SF:53.91,FIN:31.12,CH:16.32},
+  Spain:{L16:100,QF:62.16,SF:43.57,FIN:22.58,CH:12.96},
+  Brazil:{L16:100,QF:65.55,SF:35.89,FIN:19.68,CH:9.11},
+  England:{L16:100,QF:55.59,SF:30.50,FIN:17.06,CH:8.14},
+  Portugal:{L16:100,QF:37.84,SF:23.25,FIN:10.07,CH:5.00},
+  Morocco:{L16:100,QF:67.01,SF:20.72,FIN:8.40,CH:3.21},
+  Norway:{L16:100,QF:34.45,SF:15.69,FIN:7.04,CH:2.86},
+  Switzerland:{L16:100,QF:43.39,SF:16.18,FIN:6.29,CH:2.12},
+  Mexico:{L16:100,QF:44.41,SF:17.92,FIN:7.45,CH:2.68},
+  USA:{L16:100,QF:50.96,SF:16.79,FIN:5.53,CH:2.06},
+  Canada:{L16:100,QF:32.99,SF:6.73,FIN:1.88,CH:0.51},
+  Egypt:{L16:100,QF:20.28,SF:7.38,FIN:2.12,CH:0.50}
+};
+// A team's chance of FINISHING at a stage = drop between consecutive reach columns.
+// Kept only as a FALLBACK for an alive team that is somehow missing from the bracket.
+function sampleOpta(o){
+  const L16=o.L16/100,QF=o.QF/100,SF=o.SF/100,FIN=o.FIN/100,CH=o.CH/100, u=Math.random();
+  if(u>=L16) return 5;                        // out at R32
+  if(u>=QF)  return 15;                        // out at R16
+  if(u>=SF)  return 30;                        // out at QF
+  if(u>=FIN) return Math.random()<0.5?65:50;   // reached SF, lost -> 3rd/4th
+  if(u>=CH)  return 90;                         // runner-up
+  return 120;                                  // champion
+}
+function expOpta(o){
+  const L16=o.L16/100,QF=o.QF/100,SF=o.SF/100,FIN=o.FIN/100,CH=o.CH/100;
+  return 5*(1-L16)+15*(L16-QF)+30*(QF-SF)+57.5*(SF-FIN)+90*(FIN-CH)+120*CH;
+}
+// ===== BRACKET-BASED MONTE CARLO =====
+// Each simulation run plays the REAL knockout tree once, so every run has exactly one champion,
+// one runner-up, one 3rd/4th, exactly 8 QF losers, etc. — and bracket collisions between picks
+// are respected (two teams in the same half can't both reach the final).
+//
+// Slots in bracket order: adjacent slots = one R16 tie; QF1 = W(M89) v W(M90) [M97],
+// QF2 = W(M93) v W(M94) [M98], QF3 = W(M91) v W(M92) [M99], QF4 = W(M95) v W(M96) [M100];
+// SF1 = QF1 v QF2 [M101], SF2 = QF3 v QF4 [M102]. Entry = team name, or {r32:[A,B]} if pending.
+// OFFICIAL bracket per the FIFA tree (4 Jul 2026) — ESPN still overrides if its feed differs.
+const BRACKET_FALLBACK=[
+  "Paraguay","France",              // M89
+  "Canada","Morocco",               // M90
+  "Portugal","Spain",               // M93
+  "USA","Belgium",                  // M94
+  "Brazil","Norway",                // M91
+  "Mexico","England",               // M92
+  "Argentina","Egypt",              // M95 (Argentina beat Cape Verde)
+  "Switzerland","Colombia"          // M96 (Colombia beat Ghana)
+];
+let BRACKET=BRACKET_FALLBACK.slice();
+let BRACKET_SRC="official FIFA bracket, 4 Jul 2026 (ESPN can override)";
+// Opta values for bracket teams nobody picked (from the Opta hub, 4 Jul 2026).
+const OPTA_X={
+  Paraguay:{L16:100,QF:13.38,SF:5.16,FIN:1.36,CH:0.29},
+  Belgium:{L16:100,QF:49.04,SF:16.39,FIN:5.51,CH:1.98},
+  Colombia:{L16:100,QF:56.61,SF:22.53,FIN:9.24,CH:3.38}
+};
+const optaOf=t=>OPTA[t]||OPTA_X[t]||null;
+const REACH_KEYS=["L16","QF","SF","FIN","CH"];
+// Conditional prob. of winning a match at round r (0=R32 … 4=Final): reach(next)/reach(current).
+function condAdv(t,r){
+  const o=optaOf(t); if(!o) return 0.5;
+  const cur=r===0?100:o[REACH_KEYS[r-1]], nxt=o[REACH_KEYS[r]];
+  if(!cur) return 0.5;
+  return Math.min(0.98,Math.max(0.02,nxt/cur));
+}
+function matchWinProb(A,B,r){
+  const a=optaOf(A),b=optaOf(B);
+  if(a&&!b) return condAdv(A,r);      // keep the Opta marginal exact vs an unrated team
+  if(b&&!a) return 1-condAdv(B,r);
+  const pa=condAdv(A,r),pb=condAdv(B,r);
+  return pa/(pa+pb);
+}
+// Live results constrain the sim: rounds a team has already won are forced, losses are forced.
+function reachedInfo(t){
+  const s=result[t];
+  if(s===undefined) return null;      // filler team: fully open
+  const map={alive32:[0,1],r32:[0,0],alive16:[1,1],r16:[1,0],aliveqf:[2,1],qf:[2,0],
+             alivesf:[3,1],third:[3,0],fourth:[3,0],alivef:[4,1],runnerup:[4,0],champion:[5,1]};
+  return map[s]||[-1,0];
+}
+function forceState(t,r){             // 1 = must win round r, -1 = must lose, 0 = simulate
+  const q=reachedInfo(t); if(!q) return 0;
+  if(q[0]>r) return 1;                // live data says they already passed round r
+  if(q[0]===r) return q[1]?0:-1;      // currently at round r: open if alive, lost if out
+  return 0;                           // beyond live knowledge (sim advanced them here) → simulate
+}
+function playMatch(A,B,r){
+  const fa=forceState(A,r),fb=forceState(B,r);
+  if(fa===1||fb===-1) return A;
+  if(fb===1||fa===-1) return B;
+  return Math.random()<matchWinProb(A,B,r)?A:B;
+}
+function playThird(A,B){
+  const sa=result[A],sb=result[B];
+  if(sa==="third"||sb==="fourth") return {w:A,l:B};
+  if(sb==="third"||sa==="fourth") return {w:B,l:A};
+  const pa=condAdv(A,4),pb=condAdv(B,4);
+  return Math.random()<pa/(pa+pb)?{w:A,l:B}:{w:B,l:A};
+}
+// One coherent tournament: returns {team: finalStageKey} for every team in the bracket.
+function simulateBracket(){
+  const finish={};
+  let cur=[];
+  BRACKET.forEach(e=>{
+    if(typeof e==="string"){cur.push(e);return;}
+    const w=playMatch(e.r32[0],e.r32[1],0);
+    finish[w===e.r32[0]?e.r32[1]:e.r32[0]]="r32";
+    cur.push(w);
+  });
+  const loserKey=["r16","qf"];
+  for(let r=1;r<=2;r++){
+    const nxt=[];
+    for(let i=0;i<cur.length;i+=2){
+      const w=playMatch(cur[i],cur[i+1],r);
+      finish[w===cur[i]?cur[i+1]:cur[i]]=loserKey[r-1];
+      nxt.push(w);
+    }
+    cur=nxt;
+  }
+  const sfL=[],fin=[];
+  for(let i=0;i<4;i+=2){
+    const w=playMatch(cur[i],cur[i+1],3);
+    sfL.push(w===cur[i]?cur[i+1]:cur[i]);fin.push(w);
+  }
+  const t3=playThird(sfL[0],sfL[1]);
+  finish[t3.w]="third";finish[t3.l]="fourth";
+  const c=playMatch(fin[0],fin[1],4);
+  finish[c]="champion";finish[c===fin[0]?fin[1]:fin[0]]="runnerup";
+  return finish;
+}
+// ESPN fixture override: 8 known R16 pairings rebuild the bracket; pending R32 games fix opponents.
+function applyFixtures(fx){
+  const r16=fx["round-of-16"]||[];
+  if(r16.length===8){
+    BRACKET=[];r16.forEach(m=>BRACKET.push(m[0],m[1]));
+    BRACKET_SRC="ESPN fixtures (feed order)";
+    return;
+  }
+  (fx["round-of-32"]||[]).forEach(m=>{
+    BRACKET.forEach((e,i)=>{
+      if(e&&e.r32&&(m.includes(e.r32[0])||m.includes(e.r32[1])))BRACKET[i]={r32:[m[0],m[1]]};
+    });
+  });
+}
+
+let SIM_STATS=null; // {reach:{team:{L16,QF,SF,FIN,CH}},N} → calibration check vs Opta
+function rebuildProbTeams(){
+  const box=document.getElementById("probTeams"); if(!box) return;
+  const teams=Object.keys(OPTA).filter(t=>result[t]!==undefined).sort((a,b)=>OPTA[b].CH-OPTA[a].CH);
+  let h=`<div class="opta-row opta-head"><span>Team</span><span>QF</span><span>SF</span><span>Fin</span><span>Champ</span><span>xPts</span></div>`;
+  teams.forEach(t=>{const o=OPTA[t];
+    const sim=SIM_STATS&&SIM_STATS.reach[t]?(100*SIM_STATS.reach[t].CH/SIM_STATS.N).toFixed(1):null;
+    h+=`<div class="opta-row"><span class="nm">${t}</span><span>${o.QF.toFixed(0)}</span><span>${o.SF.toFixed(0)}</span><span>${o.FIN.toFixed(0)}</span><span class="ch">${o.CH.toFixed(1)}${sim!==null?`<small style="color:var(--muted)"> ·${sim}</small>`:""}</span><span>${expOpta(o).toFixed(0)}</span></div>`;
+  });
+  // show the bracket the sim is using, so wrong pairings are visible at a glance
+  let br="";
+  for(let i=0;i<BRACKET.length;i+=2){
+    const nm=e=>typeof e==="string"?e:`(${e.r32[0]}/${e.r32[1]})`;
+    br+=`M${i/2+1}: ${nm(BRACKET[i])} v ${nm(BRACKET[i+1])}${i/2%2===0?" · ":"<br>"}`;
+  }
+  h+=`<div style="margin-top:10px;font-size:11px;color:var(--muted)"><b>R16 bracket used</b> (${BRACKET_SRC}):<br>${br}Champ column shows Opta · <i>sim</i> — if they diverge, the bracket assumption is off.</div>`;
+  box.innerHTML=h;
+}
+function runSim(){
+  const board=document.getElementById("probBoard"); if(!board) return;
+  const N=10000, win={},sec={},cons={},esum={};
+  PLAYERS.forEach(p=>{win[p]=0;sec[p]=0;cons[p]=0;esum[p]=0;});
+  const reach={};
+  const bump=(t,k)=>{(reach[t]=reach[t]||{L16:0,QF:0,SF:0,FIN:0,CH:0})[k]++;};
+  for(let s=0;s<N;s++){
+    const finish=simulateBracket();
+    Object.keys(finish).forEach(t=>{
+      const F=finish[t];
+      if(F==="r32")return;
+      bump(t,"L16");
+      if(F==="r16")return; bump(t,"QF");
+      if(F==="qf")return;  bump(t,"SF");
+      if(F!=="runnerup"&&F!=="champion")return; bump(t,"FIN");
+      if(F==="champion")bump(t,"CH");
+    });
+    const pts={};
+    Object.keys(result).forEach(t=>{
+      if(finish[t]!==undefined)pts[t]=STAGE_PTS[finish[t]];                       // played out in bracket
+      else if(isAlive(result[t]))pts[t]=OPTA[t]?sampleOpta(OPTA[t]):STAGE_PTS[result[t]]; // safety fallback
+      else pts[t]=STAGE_PTS[result[t]];                                          // already eliminated: fixed
+    });
+    const tot=PLAYERS.map(p=>{const v=PICKS[p].reduce((a,t)=>a+pts[t],0);esum[p]+=v;return {p,v:v+Math.random()*1e-4};});
+    tot.sort((a,b)=>b.v-a.v);
+    win[tot[0].p]++;sec[tot[1].p]++;cons[tot[tot.length-3].p]++;
+  }
+  SIM_STATS={reach,N};
+  rebuildProbTeams();
+  const res=PLAYERS.map(p=>({p,w:win[p]/N,s:sec[p]/N,c:cons[p]/N,e:esum[p]/N})).sort((a,b)=>b.w-a.w);
+  const maxw=Math.max(...res.map(r=>r.w),0.01);
+  let html="";
+  res.forEach((r,i)=>{
+    const bw=Math.max(2,(r.w/maxw)*100);
+    html+=`<div class="pb-row"><div class="wi-rank ${i<3?'r'+(i+1):''}">${i+1}</div>
+      <div>${r.p}</div>
+      <div class="pb-bar-wrap"><div class="pb-bar" style="width:${bw}%"></div><div class="pb-bar-lbl">${(r.w*100).toFixed(1)}%</div></div>
+      <div class="pb-sec">${(r.s*100).toFixed(0)}%</div>
+      <div class="pb-cons">${(r.c*100).toFixed(0)}%</div></div>`;
+  });
+  board.innerHTML=html;
+}
+function probSim(){runSim();}
+
+// ===== OPTA % UPDATER (paste or JSON feed) =====
+const OPTA_STORE="wc26_opta_override", OPTA_URL_STORE="wc26_opta_url";
+function canonAny(n){const c=canon(n);if(c)return c;
+  return Object.keys(OPTA_X).find(x=>norm(x)===norm(n))||null;}
+function setOpta(t,v){const o={L16:v[0],QF:v[1],SF:v[2],FIN:v[3],CH:v[4]};
+  if(OPTA[t])OPTA[t]=o;else OPTA_X[t]=o;}
+function applyOptaUpdate(rows,srcLabel){
+  let n=0;
+  rows.forEach(r=>{
+    const t=canonAny(r.team);if(!t)return;
+    let v=r.nums.map(Number);
+    if(v.length>=5)v=v.slice(-5);else if(v.length===4)v=[100].concat(v);else return;
+    if(v.some(x=>!(x>=0&&x<=100)))return;
+    for(let i=1;i<5;i++)if(v[i]>v[i-1]+1e-9)return; // reach-% must be non-increasing
+    setOpta(t,v);n++;
+  });
+  if(n){
+    OPTA_DATE=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})+" · "+srcLabel;
+    try{localStorage.setItem(OPTA_STORE,JSON.stringify({ts:Date.now(),date:OPTA_DATE,OPTA:OPTA,OPTA_X:OPTA_X}));}catch(e){}
+    updateProbNote();probSim();
+  }
+  return n;
+}
+// Accepts the RAW copy from the Opta hub: team name may sit on its own line (with a "team logo"
+// prefix), numbers on the next line(s); extra columns (Top Group, L32, …) are ignored because
+// only the LAST 5 numbers are used (L16 QF SF FIN CH). Same-line "France 86.6 67.4 44.7 28.9" works too.
+function parseOptaText(txt){
+  const rows=[];let pending=null;
+  const flush=()=>{if(pending&&pending.nums.length>=4)rows.push(pending);pending=null;};
+  (txt||"").split(/\r?\n/).forEach(line=>{
+    const clean=line.replace(/team\s*logo/gi," ");
+    const nums=clean.match(/\d+(?:\.\d+)?/g)||[];
+    const nameTxt=clean.replace(/[\d.,%|]+/g," ").replace(/\s+/g," ").trim();
+    const team=nameTxt?canonAny(nameTxt):null;
+    if(team){flush();pending={team:nameTxt,nums:nums.slice()};}
+    else if(pending){pending.nums=pending.nums.concat(nums);}
+  });
+  flush();
+  return rows;
+}
+// Generic JSON scanner: finds objects carrying a team name + stage probabilities, whatever the schema.
+function scanFeed(node,rows){
+  if(Array.isArray(node)){node.forEach(x=>scanFeed(x,rows));return;}
+  if(!node||typeof node!=="object")return;
+  const nameKey=Object.keys(node).find(k=>/name|team|country/i.test(k)&&typeof node[k]==="string"&&canonAny(node[k]));
+  if(nameKey){
+    const kv={};
+    Object.keys(node).forEach(k=>{
+      const val=+node[k];if(!isFinite(val))return;
+      const kk=k.toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(/(l|last|r|round|roundof)16/.test(kk))kv.L16=val;
+      else if(/quarter|qf/.test(kk))kv.QF=val;
+      else if(/semi|sf/.test(kk))kv.SF=val;
+      else if(/final/.test(kk))kv.FIN=val;   // "semifinal"/"quarterfinal" already caught above
+      else if(/win|champ/.test(kk))kv.CH=val;
+    });
+    if([kv.QF,kv.SF,kv.FIN,kv.CH].every(x=>x!==undefined)){
+      const sc=x=>x<=1?x*100:x; // accept 0-1 or 0-100 scales
+      rows.push({team:node[nameKey],nums:[kv.L16!==undefined?sc(kv.L16):100,sc(kv.QF),sc(kv.SF),sc(kv.FIN),sc(kv.CH)].map(String)});
+    }
+  }
+  Object.keys(node).forEach(k=>scanFeed(node[k],rows));
+}
+async function fetchOptaFeed(){
+  const msg=document.getElementById("optaMsg");
+  const url=document.getElementById("optaFeedUrl").value.trim();
+  if(!url){msg.textContent="Enter the JSON feed URL first — open the Opta predictions hub, press F12 → Network → Fetch/XHR, reload, and copy the request that returns the team probabilities.";return;}
+  msg.textContent="⏳ Fetching…";
+  try{
+    const j=await fetch(url).then(r=>r.json());
+    const rows=[];scanFeed(j,rows);
+    const n=applyOptaUpdate(rows,"live feed");
+    msg.textContent=n?`✅ Updated ${n} teams from the feed — simulations re-run.`:"⚠️ Feed reached but no team probabilities recognised in it — copy-paste the table instead.";
+    if(n)try{localStorage.setItem(OPTA_URL_STORE,url);}catch(e){}
+  }catch(e){
+    msg.textContent="⚠️ Couldn't fetch/parse that URL ("+e.message+"). The site may block cross-origin requests — use copy-paste instead.";
+  }
+}
+function restoreOpta(){
+  try{
+    const s=JSON.parse(localStorage.getItem(OPTA_STORE)||"null");
+    if(s&&s.OPTA){Object.assign(OPTA,s.OPTA);Object.assign(OPTA_X,s.OPTA_X||{});OPTA_DATE=s.date||OPTA_DATE;}
+    const u=localStorage.getItem(OPTA_URL_STORE);
+    if(u)document.getElementById("optaFeedUrl").value=u;
+  }catch(e){}
+}
+// When hosted (e.g. GitHub Pages), opta.json in the same repo is the shared source of truth for
+// all visitors — refreshed automatically by the GitHub Action. Silently skipped when absent
+// (e.g. opening the file locally), leaving the baked-in values.
+async function fetchOptaJson(){
+  try{
+    const r=await fetch("opta.json?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok)return;
+    const j=await r.json();
+    if(!j||!j.teams)return;
+    // NEWEST DATA WINS: if an admin paste in this browser is more recent than the site feed,
+    // keep the paste; once the feed is fresher (next scraper run), it takes over again.
+    const feedTime=Date.parse(j.generated_at||"")||0;
+    try{
+      const loc=JSON.parse(localStorage.getItem(OPTA_STORE)||"null");
+      if(loc&&loc.ts&&loc.ts>feedTime)return;           // local paste is newer — keep it
+      if(loc)localStorage.removeItem(OPTA_STORE);        // feed is newer — drop the stale paste
+    }catch(e){}
+    let n=0;
+    Object.keys(j.teams).forEach(name=>{
+      const t=canonAny(name);if(!t)return;
+      const v=j.teams[name];
+      if([v.L16,v.QF,v.SF,v.FIN,v.CH].every(x=>x>=0&&x<=100)){setOpta(t,[v.L16,v.QF,v.SF,v.FIN,v.CH]);n++;}
+    });
+    if(n){OPTA_DATE=(j.date||OPTA_DATE)+" · site feed";updateProbNote();probSim();}
+  }catch(e){}
+}
+
 // ===== CONTROLS =====
+// The manual Opta updater is an owner tool: pasted values live only in THIS browser's storage.
+// On the published site probabilities come from opta.json (auto-updated), so the button is
+// hidden for visitors — open the page with ?admin=1 to show it.
+const ADMIN=new URLSearchParams(location.search).has("admin")||location.protocol==="file:";
+if(!ADMIN)document.getElementById("optaBtn").style.display="none";
 document.getElementById("refreshBtn").onclick=fetchLive;
+document.getElementById("simBtn").onclick=runSim;
+document.getElementById("optaBtn").onclick=()=>{const p=document.getElementById("optaPanel");p.style.display=p.style.display==="none"?"block":"none";};
+document.getElementById("optaApplyBtn").onclick=()=>{
+  const n=applyOptaUpdate(parseOptaText(document.getElementById("optaText").value),"pasted");
+  document.getElementById("optaMsg").textContent=n?`✅ Updated ${n} teams — simulations re-run.`:"⚠️ No team rows recognised. One team per line: name then 4-5 numbers (QF SF FIN CH, or L16 QF SF FIN CH).";
+};
+document.getElementById("optaFetchBtn").onclick=fetchOptaFeed;
+// Export the CURRENT probabilities (after a paste) as opta.json — upload it to the repo to
+// publish to all visitors. generated_at=now, so the site feed treats it as the newest data.
+document.getElementById("optaDlBtn").onclick=()=>{
+  const teams={};
+  [OPTA,OPTA_X].forEach(src=>Object.keys(src).forEach(t=>{const o=src[t];
+    teams[t]={L16:o.L16,QF:o.QF,SF:o.SF,FIN:o.FIN,CH:o.CH};}));
+  const out={date:new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),
+    generated_at:new Date().toISOString(),source:"admin paste via dashboard",teams:teams};
+  const a=document.createElement("a");
+  a.download="opta.json";
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}));
+  a.click();
+  document.getElementById("optaMsg").textContent="⬇ opta.json downloaded — upload it to the GitHub repo (Add file → Upload files) to publish these numbers to all visitors.";
+};
+function updateProbNote(){
+document.getElementById("probNote").innerHTML=
+  `<b>How it works:</b> each of the 10,000 runs plays the <i>actual knockout bracket</i> once — R16 → QF → SF → 3rd-place game → Final. Every run therefore has exactly one champion, one runner-up, one 3rd and 4th, exactly 8 QF losers, and so on; and two picks in the same half of the draw can never both reach the final. ` +
+  `<br><br><b>Match odds:</b> for each tie, a team's win chance comes from its Opta conditional advance probability — reach(next stage) ÷ reach(current stage), normalised against the opponent's. Rounds already decided (live results / manual edits) are forced, not simulated; eliminated teams contribute their fixed points. Each run ranks all 10 players and tallies 1st (75% of pot), 2nd (20%), 3rd-from-last (5% consolation). Opta values as of <b>${OPTA_DATE}</b>. ` +
+  `<br><b>Calibration check:</b> the small grey number next to each Champ% is the simulation's own champion rate — it should track Opta's closely now that the official bracket is loaded (Paraguay–France, Canada–Morocco, Portugal–Spain, USA–Belgium, Brazil–Norway, Mexico–England, Arg/CPV–Egypt, Switzerland–Col/Gha). Unpicked opponents (Paraguay, Belgium, Cape Verde, Colombia, Ghana) use complement-of-Opta strengths in <code>OPTA_X</code>. ` +
+  (typeof ADMIN!=="undefined"&&ADMIN
+    ? `<br><b>Updating Opta (admin):</b> press <i>📋 Update Opta %</i>, copy the hub's whole table, paste, Apply — headers, "team logo" prefixes and unused columns are stripped automatically. Pasted values are saved only in this browser; to publish them to all visitors, put the same numbers in <code>opta.json</code> in the repo (the GitHub Action does this automatically every 6 h).`
+    : `<br><b>Data freshness:</b> results come live from ESPN (every 3 min); Opta probabilities come from this site's data feed, refreshed automatically several times a day. Even between updates, the odds stay mathematically consistent as results lock in.`);
+}
+updateProbNote();
 document.getElementById("snapBtn").onclick=()=>{
   GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
   syncSelects();autoMode=false;
@@ -413,9 +924,13 @@ document.getElementById("liveNote").innerHTML=
   `<b>How it stays live:</b> When you open this page it pulls every World Cup 2026 knockout result from ESPN's public feed and auto-fills each team — losers get the points for the round they exited (R32 +5 → champion 120), and teams still playing count their guaranteed floor (R16 ≥15, etc.). It re-checks every 3 minutes while open, and the “Refresh” button forces an update. No PC scheduling needed — it’s fresh whenever the page is open and online. ` +
   `<br><br><b>Notes:</b> Group-stage exits (−40) come from the built-in snapshot since ESPN's feed only names teams once a knockout game is played. If the feed is ever unreachable, it falls back to the saved snapshot and you can edit any dropdown by hand. Data: ESPN public sports feed.`;
 
+restoreOpta();
 initChart();
+initWhatif();
 fetchLive();
+fetchOptaJson();
 setInterval(()=>{ if(autoMode) fetchLive(); }, 180000);
+setInterval(fetchOptaJson, 1800000); // re-check the site's opta.json every 30 min
 </script>
 </body>
 </html>
