@@ -675,14 +675,10 @@ function simulateBracket(){
   finish[c]="champion";finish[c===fin[0]?fin[1]:fin[0]]="runnerup";
   return finish;
 }
-// ESPN fixture override: 8 known R16 pairings rebuild the bracket; pending R32 games fix opponents.
+// ESPN fixtures are used ONLY to resolve pending R32 entries. We deliberately do NOT rebuild
+// the R16 slot order from the feed: ESPN lists games in kickoff order, not bracket order, and
+// slot order defines the whole QF/SF tree — the official order is already hardcoded above.
 function applyFixtures(fx){
-  const r16=fx["round-of-16"]||[];
-  if(r16.length===8){
-    BRACKET=[];r16.forEach(m=>BRACKET.push(m[0],m[1]));
-    BRACKET_SRC="ESPN fixtures (feed order)";
-    return;
-  }
   (fx["round-of-32"]||[]).forEach(m=>{
     BRACKET.forEach((e,i)=>{
       if(e&&e.r32&&(m.includes(e.r32[0])||m.includes(e.r32[1])))BRACKET[i]={r32:[m[0],m[1]]};
