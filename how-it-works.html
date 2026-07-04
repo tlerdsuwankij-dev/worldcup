@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How the Odds Work — World Cup 2026 Pool</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--line:#2a3140;--txt:#e6edf3;
+        --muted:#9aa7b4;--accent:#facc15;--green:#34d399;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",Roboto,system-ui,sans-serif;
+       padding:24px;line-height:1.65;font-size:15px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:24px;margin:14px 0 4px}
+  h2{font-size:17px;color:var(--accent);margin:34px 0 10px;letter-spacing:.3px}
+  p{margin:10px 0;color:var(--txt)}
+  .muted{color:var(--muted)}
+  .abtn{display:inline-block;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+        border-radius:8px;padding:8px 14px;font-size:13px;text-decoration:none}
+  .abtn:hover{border-color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+  .formula{background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:12px 14px;
+           font-family:Consolas,monospace;font-size:13.5px;color:var(--purple);overflow-x:auto;margin:12px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0}
+  th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.4px}
+  th:first-child,td:first-child{text-align:left}
+  .hl{color:var(--green);font-weight:700}
+  .bad{color:var(--red)}
+  .blue{color:var(--blue)}
+  .steps li{margin:8px 0}
+  .tree{font-family:Consolas,monospace;font-size:12.5px;color:var(--muted);background:#0a0e14;
+        border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre}
+  @media(max-width:600px){body{padding:12px;font-size:14px}h1{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" class="abtn">← Back to the scoreboard</a>
+  <h1>🎲 How "Chance to Win the Pot" Works</h1>
+  <p class="muted">The maths behind the Monte Carlo simulation — explained with real numbers from our game.</p>
+
+  <h2>1 · The game in one paragraph</h2>
+  <p>10 players paid ฿1,000 each (pot <b>฿10,000</b>). Before the tournament, everyone drafted 7 national teams.
+  Teams earn points by how far they go: champion <b>120</b> · runner-up <b>90</b> · 3rd <b>65</b> · 4th <b>50</b> ·
+  out at QF <b>30</b> · out at R16 <b>15</b> · out at R32 <b>5</b> · out in groups <b class="bad">−40</b>.
+  Highest total takes <b>75%</b> of the pot, 2nd takes <b>20%</b>, and 3rd-from-last gets a <b>5%</b> consolation.
+  While a team is still alive it counts its <i>guaranteed floor</i> (already in the QF = at least 30, etc.).</p>
+
+  <h2>2 · Why simulate whole brackets, not teams?</h2>
+  <p>A naive approach draws each team's final position independently: "France champion with 29%, Argentina champion
+  with 16%…" — draw a random finish for each team, add up points. The problem: one random draw can produce
+  <b class="bad">three champions</b>, or six semi-finalists. Real tournaments have exactly one champion, one runner-up,
+  four QF losers, eight R16 losers. And two teams in the same half of the draw can never meet in the final —
+  independent draws don't know that.</p>
+  <p>So instead, every simulation run <b>plays the actual knockout tree once</b>, match by match:</p>
+  <div class="tree">M97 (QF1) = W(M89 Paraguay–France)  v  W(M90 Canada–Morocco)   ┐
+M98 (QF2) = W(M93 Portugal–Spain)   v  W(M94 USA–Belgium)      ┴→ M101 (SF1) ┐
+M99 (QF3) = W(M91 Brazil–Norway)    v  W(M92 Mexico–England)   ┐              ├→ M104 FINAL
+M100(QF4) = W(M95 Argentina–Egypt)  v  W(M96 Swi.–Colombia)    ┴→ M102 (SF2) ┘
+SF losers → M103 (3rd place)</div>
+  <p>Each run therefore produces one coherent tournament — exactly one champion, correct counts at every stage,
+  and bracket collisions respected. Repeat 10,000 times, and count how often each player finishes 1st, 2nd, or
+  3rd-from-last. Those frequencies are the percentages on the scoreboard.</p>
+
+  <h2>3 · Where do the match odds come from?</h2>
+  <p>Opta (The Analyst) publishes each team's probability of <i>reaching</i> each stage. We convert those into
+  per-match win chances using conditional probability:</p>
+  <div class="formula">pWin(round) = reach(next stage) ÷ reach(current stage)<br>P(A beats B) = pA ÷ (pA + pB)</div>
+  <p>In the R16 this is easy — every survivor's reach-R16 is 100%, so pWin is just the reach-QF number
+  (Morocco 67.0% v Canada 33.0%, and they sum to 100 because Opta knows the pairing). The interesting case is a
+  <b>later round</b>, where the reach numbers bundle up everything that must happen first:</p>
+  <p><b>Worked example — a France v Morocco quarter-final (M97):</b> Opta says France reaches the QF with 86.62%
+  and the SF with 67.39%. That 67.39% is the chance of <i>two things together</i>: getting to the QF <i>and</i> winning
+  it. To get the pure "win the QF" chance we divide out the part that's already happened:</p>
+  <div class="formula">France: pWin(QF) = 67.39 ÷ 86.62 = 0.778   ← "given France is IN the QF, it wins 77.8% of them"<br>Morocco: pWin(QF) = 20.72 ÷ 67.01 = 0.309<br>P(France beats Morocco) = 0.778 ÷ (0.778 + 0.309) = <b>71.6%</b></div>
+  <p>Note the two ratios don't sum to 1 (0.778 + 0.309 = 1.087) — because Opta's averages include <i>all</i> possible
+  QF opponents, not just each other. The normalisation step fixes that for the specific pairing. This is also the
+  one approximation in the engine: a team's pWin is its <i>average</i> over likely opponents, so a favourite meeting
+  a weak team is slightly underrated (see §6).</p>
+  <p><b>Already-decided games are never re-simulated.</b> Once ESPN reports a result, that match is locked in every
+  run — after Morocco beat Canada, all 10,000 runs start from that fact. This is also why the odds stay valid even
+  between Opta updates: the ratios are <i>conditional</i> probabilities, so locking in results updates the maths
+  automatically (Bayes' rule doing its job quietly).</p>
+
+  <h2>4 · One full run, start to finish (a real example)</h2>
+  <p>Here is one complete simulated tournament, every match shown. A random number <span class="blue">rnd</span> in
+  [0,1) decides each game: team A wins when rnd &lt; P(A). Follow any team down the table — the winners feed the
+  next round exactly along the tree in §2.</p>
+  <table>
+    <tr><th>Match</th><th>Team A</th><th>Team B</th><th>P(A wins)</th><th>rnd</th><th>Winner</th></tr>
+    <tr><td>M89 · R16</td><td>Paraguay</td><td>France</td><td>13.4%</td><td>0.42</td><td class="hl">France</td></tr>
+    <tr><td>M90 · R16</td><td>Canada</td><td>Morocco</td><td colspan="2" class="blue">locked (played)</td><td class="hl">Morocco</td></tr>
+    <tr><td>M93 · R16</td><td>Portugal</td><td>Spain</td><td>37.8%</td><td>0.61</td><td class="hl">Spain</td></tr>
+    <tr><td>M94 · R16</td><td>USA</td><td>Belgium</td><td>51.0%</td><td>0.77</td><td class="hl">Belgium</td></tr>
+    <tr><td>M91 · R16</td><td>Brazil</td><td>Norway</td><td>65.6%</td><td>0.30</td><td class="hl">Brazil</td></tr>
+    <tr><td>M92 · R16</td><td>Mexico</td><td>England</td><td>44.4%</td><td>0.52</td><td class="hl">England</td></tr>
+    <tr><td>M95 · R16</td><td>Argentina</td><td>Egypt</td><td>79.7%</td><td>0.12</td><td class="hl">Argentina</td></tr>
+    <tr><td>M96 · R16</td><td>Switzerland</td><td>Colombia</td><td>43.4%</td><td>0.58</td><td class="hl">Colombia</td></tr>
+    <tr><td>M97 · QF</td><td>France</td><td>Morocco</td><td>71.6%</td><td>0.33</td><td class="hl">France</td></tr>
+    <tr><td>M98 · QF</td><td>Spain</td><td>Belgium</td><td>67.7%</td><td>0.81</td><td class="hl">Belgium ⚡</td></tr>
+    <tr><td>M99 · QF</td><td>Brazil</td><td>England</td><td>50.0%</td><td>0.47</td><td class="hl">Brazil</td></tr>
+    <tr><td>M100 · QF</td><td>Argentina</td><td>Colombia</td><td>62.9%</td><td>0.21</td><td class="hl">Argentina</td></tr>
+    <tr><td>M101 · SF</td><td>France</td><td>Belgium</td><td>66.4%</td><td>0.40</td><td class="hl">France</td></tr>
+    <tr><td>M102 · SF</td><td>Brazil</td><td>Argentina</td><td>48.7%</td><td>0.63</td><td class="hl">Argentina</td></tr>
+    <tr><td>M103 · 3rd</td><td>Belgium</td><td>Brazil</td><td>43.7%</td><td>0.70</td><td class="hl">Brazil 🥉</td></tr>
+    <tr><td>M104 · FINAL</td><td>France</td><td>Argentina</td><td>55.2%</td><td>0.49</td><td class="hl">France 🏆</td></tr>
+  </table>
+  <p class="muted" style="font-size:13px">⚡ Belgium over Spain at 32% is the kind of upset that happens in roughly
+  1 run in 3 — simulations must include upsets at their real frequency, or favourites' backers would look too safe.</p>
+  <p>Every team now has exactly one finish. Points this run: France <b>120</b> · Argentina <b>90</b> ·
+  Brazil <b>65</b> · Belgium 50 · Morocco, Spain, England, Colombia <b>30</b> each (QF) · the eight R16 losers
+  <b>15</b> each · already-eliminated teams keep their fixed points (Croatia 5, Turkey <span class="bad">−40</span>, …).
+  Summing each player's 7 teams:</p>
+  <table>
+    <tr><th>#</th><th>Player</th><th>Total</th><th>Payout this run</th></tr>
+    <tr><td>1</td><td>Dha</td><td>235</td><td class="hl">฿7,500 (75%)</td></tr>
+    <tr><td>2</td><td>Yo</td><td>200</td><td class="hl">฿2,000 (20%)</td></tr>
+    <tr><td>3</td><td>Jew</td><td>190</td><td>—</td></tr>
+    <tr><td>4</td><td>Fame</td><td>175</td><td>—</td></tr>
+    <tr><td>5</td><td>Jill</td><td>145</td><td>—</td></tr>
+    <tr><td>6</td><td>Vor</td><td>120</td><td>—</td></tr>
+    <tr><td>7</td><td>Bank</td><td>120</td><td>—</td></tr>
+    <tr><td>8</td><td>Win</td><td>115</td><td class="hl">฿500 (consolation)</td></tr>
+    <tr><td>9</td><td>TUL</td><td>110</td><td>—</td></tr>
+    <tr><td>10</td><td>Kirk</td><td>−125</td><td>—</td></tr>
+  </table>
+  <p class="muted" style="font-size:13px">Vor and Bank tie on 120 — the simulation breaks ties with a coin flip
+  (here Vor got 6th). In this particular run Dha's lone France pick wins everything; in most runs it doesn't.
+  That's the whole point of repeating it.</p>
+  <p>Do that <b>10,000 times</b> and count. If Fame finishes 1st in 3,780 runs, Fame's "win pot" shows <b>37.8%</b>.
+  The Excel workbook <i>worldcup_sim_logic_v3.xlsx</i> contains this exact engine in spreadsheet form — press F9
+  on its "One Simulation" sheet and a new run like the one above plays out in live formulas.</p>
+
+  <h2>5 · Why the pot odds aren't just "who has the best teams"</h2>
+  <p>Two things make this game interesting beyond raw team strength. <b>Shared picks cancel out:</b> seven players
+  drafted Morocco, so Morocco winning lifts almost everyone equally — but a team only one player holds (like Dha's
+  France) moves that player alone. <b>The bracket creates collisions:</b> Portugal and Spain meet in the R16, so
+  Kirk/Vor/Win's Portugal and Yo/Jill/Jew's Spain can't both go deep — every run knocks one side out early.
+  The simulation prices all of this automatically, because it plays real tournaments.</p>
+
+  <h2>6 · Trust, but verify — the calibration check</h2>
+  <p>Next to each team's Opta champion-% the scoreboard shows a small grey number: the simulation's own champion
+  rate. If the bracket assumption were wrong, these would diverge sharply (that's exactly how we caught a bad
+  pairing once). A small gap remains by design: our engine uses each team's <i>average</i> advance rate, while
+  Opta's model knows the specific likely opponent each round — so favourites read a few points low (France ~23%
+  vs 28.9%) and long shots slightly high. Mid-strength teams sit right on top of Opta. This residual barely
+  affects the player odds, which is what we actually care about.</p>
+
+  <h2>7 · Where the data comes from</h2>
+  <table>
+    <tr><th>Data</th><th>Source</th><th>Refresh</th></tr>
+    <tr><td>Match results</td><td class="blue">ESPN public feed</td><td>every 3 min, in your browser</td></tr>
+    <tr><td>Stage probabilities</td><td class="blue">Opta Analyst predictions hub</td><td>every 6 h, via this site's data feed</td></tr>
+    <tr><td>Simulation</td><td>10,000 bracket runs</td><td>re-run on every data change</td></tr>
+  </table>
+
+  <p style="margin-top:26px"><a href="index.html" class="abtn">← Back to the scoreboard</a></p>
+  <p class="muted" style="font-size:12px;margin-top:18px">World Cup 2026 pool · 10 players · methodology page.
+  Sources: Opta Analyst (theanalyst.com) stage-reach probabilities; ESPN public scoreboard feed. For entertainment
+  only — the only money involved is our ฿10,000 pot.</p>
+</div>
+</body>
+</html>

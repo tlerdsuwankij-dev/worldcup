@@ -128,6 +128,56 @@
   .opta-row .nm{text-align:left;font-weight:600}
   .opta-head{color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.3px}
   .opta-row .ch{color:#a78bfa;font-weight:700}
+  .abtn{display:inline-block;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;text-decoration:none}
+  .abtn:hover{border-color:var(--accent)}
+  /* ===== Bracket what-if (dropdown tree with connectors) ===== */
+  .bracket{overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .brk{display:grid;grid-template-columns:146px 18px 156px 18px 156px 18px 188px;grid-template-rows:20px repeat(16,30px);min-width:710px}
+  .brk .hd{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);align-self:end;padding-bottom:4px;text-align:center}
+  .br-match{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2);align-self:center;width:100%}
+  .br-team{padding:5px 8px;font-size:12px;border-bottom:1px solid var(--line)}
+  .br-team:last-child{border-bottom:none}
+  .br-team.on{background:#123524;color:var(--green);font-weight:700}
+  .br-team.off{opacity:.45;text-decoration:line-through}
+  .br-team.locked.on{background:#0f2a40;color:var(--blue)}
+  .br-team.tbd{color:#5b6572}
+  .br-sel{display:block;width:100%;background:var(--panel2);color:var(--txt);border:none;border-bottom:1px solid var(--line);border-radius:0;padding:6px;font-size:12px;min-width:0;cursor:pointer}
+  select.br-sel:last-child{border-bottom:none}
+  .br-sel:disabled{color:var(--blue);font-weight:700;opacity:1}
+  .br-sel.on{background:#123524;color:var(--green);font-weight:700}
+  .br-sel.off{opacity:.5;text-decoration:line-through;color:var(--muted)}
+  .br-team.set{background:#232a36;color:var(--txt);font-weight:600}
+  .cx{position:relative}
+  .cx::before{content:"";position:absolute;top:25%;bottom:25%;left:0;width:50%;border:1px solid var(--line);border-left:none;border-radius:0 5px 5px 0}
+  .cx::after{content:"";position:absolute;top:50%;left:50%;right:0;border-top:1px solid var(--line)}
+  .br-final{grid-column:7;grid-row:2 / span 16;align-self:center;display:flex;flex-direction:column;gap:7px}
+  .br-final .fl{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:2px}
+  /* ===== Phone scaling ===== */
+  @media(max-width:600px){
+    body{padding:10px}
+    h1{font-size:17px}
+    .sub{font-size:12px}
+    button,.abtn{padding:6px 10px;font-size:12px}
+    select{min-width:130px;font-size:12px}
+    .team-name{font-size:13px}
+    .lb-name{width:44px;font-size:13px}
+    .lb-prize{width:66px;font-size:11px}
+    .chartbox{height:230px}
+    #summaryCard{padding:14px 10px 10px}
+    .sc-title{font-size:16px}
+    .sc-row{grid-template-columns:26px 44px 1fr 42px 58px;gap:6px;padding:7px 4px}
+    .sc-rank{width:26px;height:26px;font-size:12px}
+    .sc-name{font-size:13px}
+    .sc-pts{font-size:14px}
+    .pk{font-size:9.5px;padding:2px 4px}
+    .opta-row{grid-template-columns:1fr 30px 30px 30px 46px 34px;font-size:11px}
+    .pb-head,.pb-row{grid-template-columns:22px 42px 1fr 36px 40px;font-size:12px}
+    .wi-head,.wi-row{grid-template-columns:24px 1fr 44px 46px 36px;font-size:12px}
+    .brk{grid-template-columns:116px 12px 128px 12px 128px 12px 156px;grid-template-rows:18px repeat(16,27px);min-width:576px}
+    .br-team{font-size:11px;padding:5px 6px}
+    .br-sel{font-size:11px;padding:5px}
+    .note{font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -181,24 +231,22 @@
     </div>
 
     <div class="explorer">
-      <div class="ex-head"><h2>🔮 What-if simulator</h2></div>
-      <div class="wi-controls">
-        <span>If</span>
-        <select id="wiTeam"></select>
-        <button id="wiWin" class="wi-btn on">advances ▲</button>
-        <button id="wiLose" class="wi-btn">is out ▼</button>
+      <div class="ex-head" style="justify-content:space-between;width:100%">
+        <h2>🔮 Bracket what-if — pick winners to the final</h2>
+        <button id="wiReset">↺ Reset picks</button>
       </div>
-      <div class="ex-meta" id="wiNote"></div>
+      <div class="ex-meta">Finished games are <span style="color:var(--blue)">locked from ESPN</span> — you can only vary pending matches. Use the dropdowns: each slot offers only the teams that can arrive from the round before, and changing an earlier round resets any later pick it invalidates. Unpicked games leave teams on their guaranteed floor. Hypothetical only — the live table above is unaffected.</div>
+      <div id="bracketBox" class="bracket"></div>
       <div class="wi-head"><span></span><span>Player</span><span>Proj.</span><span>Δ pts</span><span>Rank</span></div>
       <div id="wiBoard"></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px">Pick one of <i>your</i> teams and whether it wins its next match (advances a round) or loses (knocked out). No opponent needed — only your pool's teams score. Advancing lifts that team's backers to the next floor; a loss usually holds (floor already banked). Hypothetical only.</div>
     </div>
   </div>
 
   <div class="prob-wrap card">
     <div class="ex-head" style="justify-content:space-between;width:100%">
       <h2>🎲 Chance to win the pot <span style="text-transform:none;color:var(--muted);font-weight:400">— Opta-powered Monte Carlo</span></h2>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="how-it-works.html" class="abtn">📖 How it works</a>
         <button id="optaBtn">📋 Update Opta %</button>
         <button id="simBtn">↻ Re-run sims</button>
       </div>
@@ -402,53 +450,158 @@ function initChart(){
   });
 }
 
-// ===== WHAT-IF MATCH SIMULATOR =====
-const ADV ={alive32:"alive16",alive16:"aliveqf",aliveqf:"alivesf",alivesf:"alivef",alivef:"champion"};
-const ELIM={alive32:"r32",alive16:"r16",aliveqf:"qf",alivesf:"fourth",alivef:"runnerup"};
-const RLBL={alive32:"R32",alive16:"R16",aliveqf:"QF",alivesf:"SF",alivef:"Final"};
-let wiTeam,wiOutcome="win";
+// ===== BRACKET WHAT-IF (pick every winner, R16 → Final; ESPN results locked) =====
 function scoreWith(res,p){return PICKS[p].reduce((s,t)=>s+STAGE_PTS[res[t]],0);}
 function rankOf(res){const list=PLAYERS.map(p=>({p,t:scoreWith(res,p)})).sort((a,b)=>b.t-a.t);
   const rank={},tot={};list.forEach((o,i)=>{rank[o.p]=i+1;tot[o.p]=o.t;});return {list,rank,tot};}
-function aliveTeams(){const a=[];GROUPS.forEach(([_,ts])=>ts.forEach(t=>{if(isAlive(result[t]))a.push(t);}));return a;}
-function toggleWiBtns(){document.getElementById("wiWin").classList.toggle("on",wiOutcome==="win");
-  document.getElementById("wiLose").classList.toggle("on",wiOutcome==="lose");}
-function initWhatif(){
-  wiTeam=document.getElementById("wiTeam");
-  wiTeam.addEventListener("change",simulate);
-  document.getElementById("wiWin").addEventListener("click",()=>{wiOutcome="win";toggleWiBtns();simulate();});
-  document.getElementById("wiLose").addEventListener("click",()=>{wiOutcome="lose";toggleWiBtns();simulate();});
+
+let wiPicks={};                     // matchId -> picked winner (only for pending games)
+const WI_FLOOR={1:15,2:30,3:50,4:90};   // guaranteed points for being IN that round
+const WI_OUT={1:15,2:30,4:90};          // loser points by round (SF handled via 3rd-place game)
+// Build the picked/locked tree. Uses the same BRACKET + forceState as the Monte Carlo,
+// so completed ESPN results are locked and only pending matches can be varied.
+function wiState(){
+  let cur=BRACKET.map(e=>{
+    if(typeof e==="string")return e;
+    const a=e.r32[0],b=e.r32[1];
+    if(forceState(a,0)===1||forceState(b,0)===-1)return a;
+    if(forceState(b,0)===1||forceState(a,0)===-1)return b;
+    return null;                    // R32 game not played yet → slot unknown
+  });
+  const rounds=[];
+  [["R16",1],["QF",2],["SF",3],["Final",4]].forEach(pair=>{
+    const name=pair[0],r=pair[1],ms=[],nxt=[];
+    for(let i=0;i<cur.length;i+=2){
+      const A=cur[i],B=cur[i+1],id=name+"_"+(i/2);
+      let locked=null;
+      if(A&&(forceState(A,r)===1||(B&&forceState(B,r)===-1)))locked=A;
+      else if(B&&(forceState(B,r)===1||(A&&forceState(A,r)===-1)))locked=B;
+      const pick=(!locked&&(wiPicks[id]===A||wiPicks[id]===B))?wiPicks[id]:null; // opponent may be TBD
+      const w=locked||pick;
+      ms.push({id:id,A:A,B:B,w:w,locked:!!locked,r:r});
+      nxt.push(w||null);
+    }
+    rounds.push({name:name,ms:ms});cur=nxt;
+  });
+  // 3rd-place game between the SF losers
+  const lo=m=>(m.w&&m.A&&m.B)?(m.w===m.A?m.B:m.A):null;
+  const A=lo(rounds[2].ms[0]),B=lo(rounds[2].ms[1]);
+  let locked=null;
+  if(A&&result[A]==="third")locked=A; else if(B&&result[B]==="third")locked=B;
+  else if(A&&result[A]==="fourth")locked=B; else if(B&&result[B]==="fourth")locked=A;
+  const pick=(!locked&&(wiPicks.T3===A||wiPicks.T3===B))?wiPicks.T3:null;
+  return {rounds:rounds,third:{id:"T3",A:A,B:B,w:locked||pick,locked:!!locked,r:3}};
 }
-function refreshWiTeam(){
-  const alive=aliveTeams(),prev=wiTeam.value;wiTeam.innerHTML="";
-  alive.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t+" — in "+(RLBL[result[t]]||"");wiTeam.appendChild(o);});
-  if(alive.includes(prev))wiTeam.value=prev; else if(alive.length)wiTeam.value=alive[0];
+// Points per team under the picked tree: decided matches score, undecided ones pay the floor.
+function wiPoints(st){
+  const pts={};
+  Object.keys(result).forEach(t=>{if(!isAlive(result[t]))pts[t]=STAGE_PTS[result[t]];});
+  const trace=t=>{
+    for(let ri=0;ri<4;ri++){
+      const m=st.rounds[ri].ms.find(m=>m.A===t||m.B===t);
+      if(!m)return STAGE_PTS[result[t]];      // not in the tree yet (pending R32) → current floor
+      if(!m.w)return WI_FLOOR[m.r];           // match undecided → floor for reaching this round
+      if(m.w!==t){                            // knocked out here
+        if(m.r===3){                          // SF loser → 3rd-place game
+          if(st.third.w)return st.third.w===t?65:50;
+          return 50;                          // 3rd-place game unpicked → floor (4th)
+        }
+        return WI_OUT[m.r];
+      }
+    }
+    return 120;                               // won the final
+  };
+  GROUPS.forEach(g=>g[1].forEach(t=>{if(isAlive(result[t]))pts[t]=trace(t);}));
+  return pts;
 }
-function simulate(){
-  if(!wiTeam)return;
-  refreshWiTeam();
-  const board=document.getElementById("wiBoard"),note=document.getElementById("wiNote");
-  const alive=aliveTeams();
-  if(!alive.length){note.textContent="No teams still alive to simulate — the tournament results are final.";board.innerHTML="";return;}
-  const T=wiTeam.value;
-  const r2=Object.assign({},result);
-  r2[T]=wiOutcome==="win"?(ADV[result[T]]||result[T]):(ELIM[result[T]]||result[T]);
-  const cur=rankOf(result),proj=rankOf(r2);
-  const verb=wiOutcome==="win"?"wins &amp; advances to":"is knocked out →";
-  note.innerHTML=`If <b>${T}</b> ${verb} <b>${STAGE_LBL[r2[T]]}</b>:`;
-  let html="";
-  proj.list.forEach((o,i)=>{
+function wiSel(id,v){
+  if(!v)delete wiPicks[id];else wiPicks[id]=v;
+  renderWhatIf();
+}
+// Champion pick implies: wins its own SF AND the final. Runner-up pick implies: wins the other SF.
+function wiSetChamp(v){
+  const st=wiState(),S=st.rounds[2].ms;
+  delete wiPicks.Final_0;
+  if(!v){delete wiPicks.SF_0;delete wiPicks.SF_1;}
+  else{
+    const s0=(S[0].A===v||S[0].B===v);
+    if(!(s0?S[0]:S[1]).locked)wiPicks[s0?"SF_0":"SF_1"]=v;
+    wiPicks.Final_0=v;
+  }
+  renderWhatIf();
+}
+function wiSetRunner(v){
+  const st=wiState(),S=st.rounds[2].ms,ch=st.rounds[3].ms[0].w;
+  if(!v){
+    if(ch)delete wiPicks[(S[0].A===ch||S[0].B===ch)?"SF_1":"SF_0"];
+  }else{
+    const s0=(S[0].A===v||S[0].B===v);
+    if(!(s0?S[0]:S[1]).locked)wiPicks[s0?"SF_0":"SF_1"]=v;
+  }
+  renderWhatIf();
+}
+function renderWhatIf(){
+  const box=document.getElementById("bracketBox");if(!box)return;
+  const st=wiState();
+  const R=st.rounds[0].ms,Q=st.rounds[1].ms,S=st.rounds[2].ms,F=st.rounds[3].ms[0];
+  const opts=(list,cur)=>{let o=`<option value="">—</option>`;
+    list.forEach(t=>{if(t)o+=`<option value="${t}"${cur===t?" selected":""}>${t}</option>`;});return o;};
+  // slot dropdown; parent = the match this slot feeds INTO — once the parent's winner is known,
+  // colour the winning slot green and strike the losing one (win/lose styling along the way)
+  const sel=(m,parent)=>{
+    const cls=["br-sel"];
+    if(parent&&parent.w&&m.w)cls.push(parent.w===m.w?"on":"off");
+    return `<select class="${cls.join(" ")}"${m.locked?" disabled":""} onchange="wiSel('${m.id}',this.value)">${opts([m.A,m.B],m.w)}</select>`;};
+  const tm=(m,t)=>{if(!t)return `<div class="br-team tbd">—</div>`;
+    const c=["br-team"];if(m.w===t)c.push("on");else if(m.w)c.push("off");if(m.locked)c.push("locked");
+    return `<div class="${c.join(" ")}">${t}</div>`;};
+  const auto=t=>`<div class="br-team ${t?"set":"tbd"}">${t||"—"}</div>`;
+  const other=(m,t)=>(t&&m.A&&m.B)?(t===m.A?m.B:m.A):null;
+  // medal dropdowns: champion from all four SF teams; runner-up from the OTHER semifinal
+  const sfTeams=m=>m.locked?[m.w]:[m.A,m.B];
+  const champOpts=sfTeams(S[0]).concat(sfTeams(S[1])).filter(Boolean);
+  const ch=F.w;
+  const chS0=ch&&(S[0].A===ch||S[0].B===ch);
+  const ru=ch?(chS0?S[1].w:S[0].w):null;
+  const ruOpts=ch?sfTeams(chS0?S[1]:S[0]).filter(Boolean):[];
+  let h=`<div class="brk">
+    <div class="hd" style="grid-column:1;grid-row:1">R16</div>
+    <div class="hd" style="grid-column:3;grid-row:1">QF — pick R16 winners</div>
+    <div class="hd" style="grid-column:5;grid-row:1">SF — pick QF winners</div>
+    <div class="hd" style="grid-column:7;grid-row:1">Medals — pick from the SF teams</div>`;
+  R.forEach((m,i)=>{h+=`<div class="br-match" style="grid-column:1;grid-row:${2+i*2} / span 2">${tm(m,m.A)}${tm(m,m.B)}</div>`;});
+  for(let j=0;j<4;j++){
+    h+=`<div class="cx" style="grid-column:2;grid-row:${2+j*4} / span 4"></div>
+        <div class="br-match" style="grid-column:3;grid-row:${2+j*4} / span 4">${sel(R[2*j],Q[j])}${sel(R[2*j+1],Q[j])}</div>`;
+  }
+  for(let k=0;k<2;k++){
+    h+=`<div class="cx" style="grid-column:4;grid-row:${2+k*8} / span 8"></div>
+        <div class="br-match" style="grid-column:5;grid-row:${2+k*8} / span 8">${sel(Q[2*k],S[k])}${sel(Q[2*k+1],S[k])}</div>`;
+  }
+  h+=`<div class="cx" style="grid-column:6;grid-row:2 / span 16"></div>
+    <div class="br-final">
+      <div><div class="fl">🏆 Champion</div><div class="br-match"><select class="br-sel${ch?" on":""}"${F.locked?" disabled":""} onchange="wiSetChamp(this.value)">${opts(champOpts,ch)}</select></div></div>
+      <div><div class="fl">🥈 Runner-up${ch?"":" — pick champion first"}</div><div class="br-match"><select class="br-sel"${(F.locked||!ch)?" disabled":""} onchange="wiSetRunner(this.value)">${opts(ruOpts,ru)}</select></div></div>
+      <div><div class="fl">🥉 3rd place</div><div class="br-match"><select class="br-sel"${st.third.locked?" disabled":""} onchange="wiSel('T3',this.value)">${opts([st.third.A,st.third.B],st.third.w)}</select></div></div>
+      <div><div class="fl">4th place (auto)</div><div class="br-match">${auto(other(st.third,st.third.w))}</div></div>
+    </div></div>`;
+  box.innerHTML=h;
+  const pts=wiPoints(st),cur=rankOf(result);
+  const list=PLAYERS.map(p=>({p:p,t:PICKS[p].reduce((s,x)=>s+pts[x],0)})).sort((a,b)=>b.t-a.t);
+  let bh="";
+  list.forEach((o,i)=>{
     const dp=o.t-cur.tot[o.p], rc=cur.rank[o.p]-(i+1);
     const dcls=dp>0?"up":dp<0?"down":"flat", mcls=rc>0?"up":rc<0?"down":"flat";
     const move=rc>0?"▲"+rc:rc<0?"▼"+(-rc):"–";
-    html+=`<div class="wi-row"><div class="wi-rank ${i<3?'r'+(i+1):''}">${i+1}</div>
+    bh+=`<div class="wi-row"><div class="wi-rank ${i<3?'r'+(i+1):''}">${i+1}</div>
       <div class="wi-name">${o.p}</div>
       <div class="wi-pts" style="${o.t<0?'color:var(--red)':''}">${o.t}</div>
       <div class="wi-delta ${dcls}">${dp>0?'+'+dp:dp}</div>
       <div class="wi-move ${mcls}">${move}</div></div>`;
   });
-  board.innerHTML=html;
+  document.getElementById("wiBoard").innerHTML=bh;
 }
+document.getElementById("wiReset").onclick=()=>{wiPicks={};renderWhatIf();};
 
 // ===== SCORING =====
 function playerScore(p){let total=0;const parts=[];
@@ -493,7 +646,7 @@ function render(){
     `Pot <b>฿${pot.toLocaleString()}</b> · 1st <b>฿${(pot*0.75).toLocaleString()}</b> · 2nd <b>฿${(pot*0.20).toLocaleString()}</b> · 3rd-from-last <b>฿${(pot*0.05).toLocaleString()}</b>`;
   buildDetail(rows);
   buildSummary(rows,prizeMap,pot);
-  simulate();
+  renderWhatIf();
   probSim();
 }
 
@@ -693,7 +846,9 @@ function rebuildProbTeams(){
   let h=`<div class="opta-row opta-head"><span>Team</span><span>QF</span><span>SF</span><span>Fin</span><span>Champ</span><span>xPts</span></div>`;
   teams.forEach(t=>{const o=OPTA[t];
     const sim=SIM_STATS&&SIM_STATS.reach[t]?(100*SIM_STATS.reach[t].CH/SIM_STATS.N).toFixed(1):null;
-    h+=`<div class="opta-row"><span class="nm">${t}</span><span>${o.QF.toFixed(0)}</span><span>${o.SF.toFixed(0)}</span><span>${o.FIN.toFixed(0)}</span><span class="ch">${o.CH.toFixed(1)}${sim!==null?`<small style="color:var(--muted)"> ·${sim}</small>`:""}</span><span>${expOpta(o).toFixed(0)}</span></div>`;
+    // eliminated teams: Opta zeroes their row, so "expected" points = the points actually banked
+    const xp=isAlive(result[t])?expOpta(o).toFixed(0):String(STAGE_PTS[result[t]]);
+    h+=`<div class="opta-row"><span class="nm">${t}</span><span>${o.QF.toFixed(0)}</span><span>${o.SF.toFixed(0)}</span><span>${o.FIN.toFixed(0)}</span><span class="ch">${o.CH.toFixed(1)}${sim!==null?`<small style="color:var(--muted)"> ·${sim}</small>`:""}</span><span>${xp}</span></div>`;
   });
   // show the bracket the sim is using, so wrong pairings are visible at a glance
   let br="";
@@ -922,7 +1077,6 @@ document.getElementById("liveNote").innerHTML=
 
 restoreOpta();
 initChart();
-initWhatif();
 fetchLive();
 fetchOptaJson();
 setInterval(()=>{ if(autoMode) fetchLive(); }, 180000);
