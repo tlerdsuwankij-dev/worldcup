@@ -1064,9 +1064,37 @@ document.getElementById("resetBtn").onclick=()=>{
   syncSelects();autoMode=false;setStatus("err","↺ Cleared. Press Refresh for live ESPN data.");render();
 };
 document.getElementById("shotBtn").onclick=()=>{
-  html2canvas(document.getElementById("summaryCard"),{backgroundColor:"#0c1118",scale:2}).then(canvas=>{
+  // Fixed-size capture: render the card at desktop layout and 920px width regardless of the
+  // viewer's screen — the PNG is always 1840px wide (920 × scale 2), identical on PC and phone.
+  html2canvas(document.getElementById("summaryCard"),{
+    backgroundColor:"#0c1118",scale:2,
+    windowWidth:1000,windowHeight:1400,   // media queries evaluate as desktop, not phone
+    onclone:doc=>{const c=doc.getElementById("summaryCard");c.style.width="920px";c.style.maxWidth="920px";}
+  }).then(async canvas=>{
+    const name="worldcup_standings_"+new Date().toISOString().slice(0,10)+".png";
+    // iPad/iPhone: Safari ignores programmatic downloads — use the share sheet, or a
+    // long-press overlay as fallback. (iPadOS pretends to be a Mac, hence the touch check.)
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+    if(isIOS){
+      try{
+        const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+        const file=new File([blob],name,{type:"image/png"});
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:"World Cup standings"});
+          return;                                    // user saved/shared via the sheet
+        }
+      }catch(e){ if(e&&e.name==="AbortError") return; /* user closed the sheet */ }
+      const ov=document.createElement("div");        // fallback: long-press to save
+      ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px";
+      ov.innerHTML=`<div style="color:#e6edf3;font:14px 'Segoe UI',sans-serif;text-align:center">Long-press the image → <b>Save to Photos</b><br><span style="color:#9aa7b4;font-size:12px">แตะรูปค้างไว้ แล้วเลือก "บันทึกลงในรูปภาพ"</span></div>
+        <img src="${canvas.toDataURL("image/png")}" style="max-width:100%;max-height:78%;border-radius:10px">
+        <button style="background:#1c2230;color:#e6edf3;border:1px solid #2a3140;border-radius:8px;padding:8px 18px;font-size:14px">✕ Close</button>`;
+      ov.querySelector("button").onclick=()=>ov.remove();
+      document.body.appendChild(ov);
+      return;
+    }
     const a=document.createElement("a");
-    a.download="worldcup_standings_"+new Date().toISOString().slice(0,10)+".png";
+    a.download=name;
     a.href=canvas.toDataURL("image/png");a.click();
   });
 };
