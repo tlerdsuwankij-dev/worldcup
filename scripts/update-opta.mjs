@@ -45,24 +45,46 @@ function parseText(txt){
   return rows;
 }
 
+// The hub page never goes network-idle (ads, live ticker), so: load DOM only, then poll the
+// rendered text until the team table shows up. Falls back to the dataviz widget URL directly.
+const URLS = [HUB, "https://dataviz.theanalyst.com/opta-football-predictions/"];
+
 const browser = await chromium.launch();
 try {
-  const page = await browser.newPage();
-  await page.goto(HUB, { waitUntil: "networkidle", timeout: 90000 });
-  await page.waitForTimeout(5000); // give the dataviz widget time to render
+  const ctx = await browser.newContext({
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+    viewport: { width: 1400, height: 2200 }
+  });
+  const page = await ctx.newPage();
 
-  // Collect visible text from the page AND every iframe (the hub renders inside one)
-  let text = "";
-  for (const frame of page.frames()) {
-    try { text += "\n" + await frame.evaluate(() => document.body ? document.body.innerText : ""); }
-    catch { /* cross-origin frame without access — skip */ }
+  let teams = {}, lastText = "";
+  outer:
+  for (const url of URLS) {
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    } catch (e) {
+      console.error(`goto failed for ${url}: ${e.message}`);
+      continue;
+    }
+    for (let i = 1; i <= 12; i++) {                 // poll up to ~60 s per URL
+      await page.waitForTimeout(5000);
+      try { await page.mouse.wheel(0, 1500); } catch {}   // nudge lazy-rendered content
+      let text = "";
+      for (const frame of page.frames()) {          // page + all iframes (widget lives in one)
+        try { text += "\n" + await frame.evaluate(() => document.body ? document.body.innerText : ""); }
+        catch { /* cross-origin frame without access — skip */ }
+      }
+      lastText = text;
+      teams = parseText(text);
+      console.log(`${url} — poll ${i}: ${Object.keys(teams).length} teams recognised`);
+      if (Object.keys(teams).length >= 8) break outer;
+    }
   }
 
-  const teams = parseText(text);
   const n = Object.keys(teams).length;
   if (n < 8) {
     console.error(`Only ${n} teams parsed — page layout may have changed. Not updating.`);
-    console.error("--- first 2000 chars of scraped text ---\n" + text.slice(0, 2000));
+    console.error("--- first 3000 chars of scraped text ---\n" + lastText.slice(0, 3000));
     process.exit(1);
   }
 
