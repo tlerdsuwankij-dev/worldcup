@@ -13,6 +13,7 @@
     --red:#f87171; --blue:#60a5fa; --gold:#ffd23f; --silver:#cbd5e1; --bronze:#e08c5a;
   }
   *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%} /* stop mobile Safari inflating text in wide blocks */
   body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",Roboto,system-ui,sans-serif;padding:18px}
   h1{font-size:22px;margin:0 0 2px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:6px}
@@ -110,6 +111,7 @@
   /* ===== Win probability (Opta Monte Carlo) ===== */
   .prob-wrap{margin-top:16px}
   .prob-grid{display:grid;grid-template-columns:1fr 1.35fr;gap:18px;align-items:start}
+  .prob-grid>div{min-width:0} /* let the columns shrink to the viewport instead of overflowing */
   @media(max-width:900px){.prob-grid{grid-template-columns:1fr}}
   .prob-sub{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px}
   .pt-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed #232a36;font-size:13px}
@@ -124,10 +126,11 @@
   .pb-bar{height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:5px}
   .pb-bar-lbl{position:absolute;left:6px;top:0;line-height:18px;font-size:11px;font-weight:700}
   .pb-sec,.pb-cons{text-align:right;color:var(--muted);font-size:12px}
-  .opta-row{display:grid;grid-template-columns:1.1fr 34px 34px 34px 48px 40px;gap:4px;font-size:12px;padding:4px 2px;border-bottom:1px solid #232a36;text-align:right}
+  .opta-row{display:grid;grid-template-columns:1.1fr 32px 32px 32px 74px 40px;gap:4px;font-size:12px;padding:4px 2px;border-bottom:1px solid #232a36;text-align:right}
   .opta-row .nm{text-align:left;font-weight:600}
   .opta-head{color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.3px}
-  .opta-row .ch{color:#a78bfa;font-weight:700}
+  .opta-head span:first-child{text-align:left}
+  .opta-row .ch{color:#a78bfa;font-weight:700;white-space:nowrap}
   .abtn{display:inline-block;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;text-decoration:none}
   .abtn:hover{border-color:var(--accent)}
   /* ===== Bracket what-if (dropdown tree with connectors) ===== */
@@ -170,7 +173,7 @@
     .sc-name{font-size:13px}
     .sc-pts{font-size:14px}
     .pk{font-size:9.5px;padding:2px 4px}
-    .opta-row{grid-template-columns:1fr 30px 30px 30px 46px 34px;font-size:11px}
+    .opta-row{grid-template-columns:1fr 27px 27px 27px 64px 32px;font-size:11px}
     .pb-head,.pb-row{grid-template-columns:22px 42px 1fr 36px 40px;font-size:12px}
     .wi-head,.wi-row{grid-template-columns:24px 1fr 44px 46px 36px;font-size:12px}
     .brk{grid-template-columns:116px 12px 128px 12px 128px 12px 156px;grid-template-rows:18px repeat(16,27px);min-width:576px}
@@ -850,6 +853,13 @@ function rebuildProbTeams(){
     // eliminated teams: Opta zeroes their row, so "expected" points = the points actually banked
     const xp=isAlive(result[t])?expOpta(o).toFixed(0):String(STAGE_PTS[result[t]]);
     h+=`<div class="opta-row"><span class="nm">${t}</span><span>${o.QF.toFixed(0)}</span><span>${o.SF.toFixed(0)}</span><span>${o.FIN.toFixed(0)}</span><span class="ch">${o.CH.toFixed(1)}${sim!==null?`<small style="color:var(--muted)"> ·${sim}</small>`:""}</span><span>${xp}</span></div>`;
+  });
+  // unpicked bracket teams (dimmed): they score no points but shape everyone's path —
+  // their strengths update from the same Opta feed as everyone else
+  Object.keys(OPTA_X).sort((a,b)=>OPTA_X[b].CH-OPTA_X[a].CH).forEach(t=>{
+    const o=OPTA_X[t];
+    const sim=SIM_STATS&&SIM_STATS.reach[t]?(100*SIM_STATS.reach[t].CH/SIM_STATS.N).toFixed(1):null;
+    h+=`<div class="opta-row" style="opacity:.5" title="unpicked — affects the bracket, scores no points"><span class="nm">${t}</span><span>${o.QF.toFixed(0)}</span><span>${o.SF.toFixed(0)}</span><span>${o.FIN.toFixed(0)}</span><span class="ch">${o.CH.toFixed(1)}${sim!==null?`<small style="color:var(--muted)"> ·${sim}</small>`:""}</span><span>—</span></div>`;
   });
   // show the bracket the sim is using, so wrong pairings are visible at a glance
   let br="";
