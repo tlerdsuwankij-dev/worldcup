@@ -177,9 +177,17 @@
     .opta-row{grid-template-columns:1fr 27px 27px 27px 64px 32px;font-size:11px}
     .pb-head,.pb-row{grid-template-columns:22px 42px 1fr 36px 40px;font-size:12px}
     .wi-head,.wi-row{grid-template-columns:24px 1fr 44px 46px 36px;font-size:12px}
-    .brk{grid-template-columns:116px 12px 128px 12px 128px 12px 156px;grid-template-rows:18px repeat(16,27px);min-width:576px}
-    .br-team{font-size:11px;padding:5px 6px}
-    .br-sel{font-size:11px;padding:5px}
+    /* bracket compresses to the screen width — no sideways scrolling */
+    .brk{grid-template-columns:1fr 5px 1.08fr 5px 1.08fr 5px 1.14fr;grid-template-rows:16px repeat(16,25px);min-width:0}
+    .br-team{font-size:10px;padding:4px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .br-sel{font-size:10px;padding:4px 2px}
+    .br-final{gap:5px}
+    .br-final .fl{font-size:8px}
+    .brk .hd{font-size:8.5px}
+    /* full pick & points table fits the width: fixed layout + wrapping */
+    table.detail{table-layout:fixed;width:100%;font-size:9px}
+    table.detail th,table.detail td{padding:3px 1px;word-break:break-word}
+    table.detail span{font-size:8.5px!important}
     .note{font-size:11px}
   }
 </style>
