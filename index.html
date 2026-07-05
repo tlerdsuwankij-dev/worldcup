@@ -566,9 +566,9 @@ function renderWhatIf(){
   const ruOpts=ch?sfTeams(chS0?S[1]:S[0]).filter(Boolean):[];
   let h=`<div class="brk">
     <div class="hd" style="grid-column:1;grid-row:1">R16</div>
-    <div class="hd" style="grid-column:3;grid-row:1">QF — pick R16 winners</div>
-    <div class="hd" style="grid-column:5;grid-row:1">SF — pick QF winners</div>
-    <div class="hd" style="grid-column:7;grid-row:1">Medals — pick from the SF teams</div>`;
+    <div class="hd" style="grid-column:3;grid-row:1">QF</div>
+    <div class="hd" style="grid-column:5;grid-row:1">SF</div>
+    <div class="hd" style="grid-column:7;grid-row:1">MEDALS</div>`;
   R.forEach((m,i)=>{h+=`<div class="br-match" style="grid-column:1;grid-row:${2+i*2} / span 2">${tm(m,m.A)}${tm(m,m.B)}</div>`;});
   for(let j=0;j<4;j++){
     h+=`<div class="cx" style="grid-column:2;grid-row:${2+j*4} / span 4"></div>
