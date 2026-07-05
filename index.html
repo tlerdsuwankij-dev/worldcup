@@ -87,6 +87,7 @@
   .sc-foot .dotg{color:#f87171}.sc-foot .dotw{color:#34d399}.sc-foot .dota{color:#60a5fa}
   /* ===== Bottom grid: summary + player explorer ===== */
   .bottom-grid{display:grid;grid-template-columns:1.25fr .9fr;gap:16px;align-items:start;margin-top:22px}
+  .bottom-grid>*,.grid>*{min-width:0} /* grid items must be allowed to shrink, or inner scroll areas force the page wide on phones */
   @media(max-width:900px){.bottom-grid{grid-template-columns:1fr}}
   .bottom-grid .summary-wrap{margin-top:0}
   .explorer{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
@@ -856,7 +857,7 @@ function rebuildProbTeams(){
   });
   // unpicked bracket teams (dimmed): they score no points but shape everyone's path —
   // their strengths update from the same Opta feed as everyone else
-  Object.keys(OPTA_X).sort((a,b)=>OPTA_X[b].CH-OPTA_X[a].CH).forEach(t=>{
+  Object.keys(OPTA_X).filter(inBracket).sort((a,b)=>OPTA_X[b].CH-OPTA_X[a].CH).forEach(t=>{
     const o=OPTA_X[t];
     const sim=SIM_STATS&&SIM_STATS.reach[t]?(100*SIM_STATS.reach[t].CH/SIM_STATS.N).toFixed(1):null;
     h+=`<div class="opta-row" style="opacity:.5" title="unpicked — affects the bracket, scores no points"><span class="nm">${t}</span><span>${o.QF.toFixed(0)}</span><span>${o.SF.toFixed(0)}</span><span>${o.FIN.toFixed(0)}</span><span class="ch">${o.CH.toFixed(1)}${sim!==null?`<small style="color:var(--muted)"> ·${sim}</small>`:""}</span><span>—</span></div>`;
@@ -918,8 +919,11 @@ function probSim(){runSim();}
 const OPTA_STORE="wc26_opta_override", OPTA_URL_STORE="wc26_opta_url";
 function canonAny(n){const c=canon(n);if(c)return c;
   return Object.keys(OPTA_X).find(x=>norm(x)===norm(n))||null;}
+const inBracket=t=>BRACKET.some(e=>typeof e==="string"?e===t:(e.r32&&(e.r32[0]===t||e.r32[1]===t)));
 function setOpta(t,v){const o={L16:v[0],QF:v[1],SF:v[2],FIN:v[3],CH:v[4]};
-  if(OPTA[t])OPTA[t]=o;else OPTA_X[t]=o;}
+  if(OPTA[t])OPTA[t]=o;
+  else if(OPTA_X[t]||inBracket(t))OPTA_X[t]=o;   // ignore feed rows for teams outside the knockout bracket
+}
 function applyOptaUpdate(rows,srcLabel){
   let n=0;
   rows.forEach(r=>{
