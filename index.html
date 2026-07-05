@@ -184,7 +184,7 @@
   <h1>⚽ World Cup 2026 Game — Auto-Live Scoreboard</h1>
   <div class="sub">10 players · ฿1,000 each · pot ฿10,000. Results auto-update from ESPN's public feed each time you open or refresh.</div>
   <div id="statusbar" class="statusbar load">⏳ Loading live scores…</div>
-  <div class="stamp" style="font-size:12px;color:var(--accent);margin:-6px 0 12px">📊 Win-odds use Opta stage projections (hub, 3 Jul 2026).</div>
+  <div class="stamp" style="font-size:12px;color:var(--accent);margin:-6px 0 12px">📊 Win-odds use Opta stage projections — auto-updating feed (date in the odds panel below).</div>
 
   <div class="controls">
     <button id="refreshBtn">↻ Refresh from ESPN now</button>
@@ -321,13 +321,14 @@ const STAGE_PTS = Object.fromEntries(STAGES.map(s=>[s[0],s[2]]));
 const STAGE_LBL = Object.fromEntries(STAGES.map(s=>[s[0],s[1]]));
 const isAlive = k=>k.startsWith("alive");
 
-// ===== BUILT-IN SNAPSHOT (fallback if ESPN unreachable) — 30 Jun 2026 =====
+// ===== BUILT-IN SNAPSHOT (fallback if ESPN unreachable) — 6 Jul 2026 =====
+// France & Morocco through to QF; Canada & Paraguay out at R16; other R16 games pending.
 const SNAPSHOT = {
-  England:"alive16", Portugal:"alive16", Spain:"alive16", France:"alive16",
+  England:"alive16", Portugal:"alive16", Spain:"alive16", France:"aliveqf",
   Croatia:"r32", Switzerland:"alive16", Norway:"alive16", Turkey:"group", Scotland:"group",
   Japan:"r32", "South Korea":"group", Uzbekistan:"group",
-  Morocco:"alive16", "Ivory Coast":"r32", Egypt:"alive16",
-  USA:"alive16", Mexico:"alive16", Canada:"alive16",
+  Morocco:"aliveqf", "Ivory Coast":"r32", Egypt:"alive16",
+  USA:"alive16", Mexico:"alive16", Canada:"r16",
   Brazil:"alive16", Argentina:"alive16", Uruguay:"group"
 };
 const result = {};
@@ -403,7 +404,7 @@ async function fetchLive(){
 function fallback(reason){
   GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
   syncSelects();
-  setStatus("err",`🟠 Couldn't reach the live feed (${reason}) — showing the built-in 30 Jun snapshot. Edit dropdowns manually or try Refresh.`);
+  setStatus("err",`🟠 Couldn't reach the live feed (${reason}) — showing the built-in 6 Jul snapshot. Edit dropdowns manually or try Refresh.`);
   render();
 }
 function syncSelects(){document.querySelectorAll("select").forEach(s=>{if(result[s.dataset.team]!==undefined)s.value=result[s.dataset.team];});}
@@ -1057,7 +1058,7 @@ updateProbNote();
 document.getElementById("snapBtn").onclick=()=>{
   GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
   syncSelects();autoMode=false;
-  setStatus("err","⤺ Showing the built-in 30 Jun snapshot. Press Refresh for live ESPN data.");render();
+  setStatus("err","⤺ Showing the built-in 6 Jul snapshot. Press Refresh for live ESPN data.");render();
 };
 document.getElementById("resetBtn").onclick=()=>{
   Object.keys(result).forEach(t=>result[t]="none");
