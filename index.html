@@ -184,10 +184,15 @@
     .br-final{gap:5px}
     .br-final .fl{font-size:8px}
     .brk .hd{font-size:8.5px}
-    /* full pick & points table fits the width: fixed layout + wrapping */
-    table.detail{table-layout:fixed;width:100%;font-size:9px}
-    table.detail th,table.detail td{padding:3px 1px;word-break:break-word}
-    table.detail span{font-size:8.5px!important}
+    /* full pick & points breakdown becomes chip cards on phones: player, 7 pick pills, total */
+    table.detail{width:100%}
+    table.detail tr:first-child{display:none}          /* column headers don't apply to chips */
+    table.detail tr{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:8px 2px;border-bottom:1px solid #232a36}
+    table.detail td{border-bottom:none;background:#161c27;border:1px solid #2c3444;border-radius:6px;padding:3px 7px;font-size:10.5px;white-space:nowrap}
+    table.detail td br{display:none}                   /* points sit inline beside the team name */
+    table.detail td span{font-size:10px!important;margin-left:4px}
+    table.detail td.tm{background:none;border:none;font-size:13px;padding:0 6px 0 0}
+    table.detail td:last-child{background:none;border:none;font-size:14px;margin-left:auto}
     .note{font-size:11px}
   }
 </style>
