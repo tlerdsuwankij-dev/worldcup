@@ -307,7 +307,7 @@
       <h2>📌 Interesting facts</h2>
       <button id="factShot">⬇ Save as PNG</button>
       <button id="factShuffle">🔀 Shuffle</button>
-      <span style="font-size:12px;color:var(--muted)">8 facts drawn from a pool of 20 — auto-generated from live results &amp; the 10,000 simulations. Today's set is the same for every visitor; 🔀 deals a new hand.</span>
+      <span style="font-size:12px;color:var(--muted)">8 facts drawn from a pool of 23 — auto-generated from live results &amp; the 10,000 simulations. Today's set is the same for every visitor; 🔀 deals a new hand.</span>
     </div>
     <div id="factsCard"></div>
   </div>
@@ -929,7 +929,7 @@ function rebuildProbTeams(){
 }
 function runSim(){
   const board=document.getElementById("probBoard"); if(!board) return;
-  const N=10000, win={},sec={},cons={},esum={},CW={},CC={};
+  const N=10000, win={},sec={},cons={},esum={},CW={},CC={},FP={};
   PLAYERS.forEach(p=>{win[p]=0;sec[p]=0;cons[p]=0;esum[p]=0;});
   // extra tallies for the facts pool: rank spread (chaos) + pending-match pot swings (kingmaker)
   const bestR={},worstR={};PLAYERS.forEach(p=>{bestR[p]=99;worstR[p]=0;});
@@ -974,9 +974,13 @@ function runSim(){
     // joint tally: which player takes the pot, given who becomes champion
     const champ=Object.keys(finish).find(t=>finish[t]==="champion");
     if(champ){CC[champ]=(CC[champ]||0)+1;const cw=CW[champ]=CW[champ]||{};cw[tot[0].p]=(cw[tot[0].p]||0)+1;}
+    // final-pairing tally: who takes the pot, given this exact final
+    const runner=Object.keys(finish).find(t=>finish[t]==="runnerup");
+    if(champ&&runner){const key=[champ,runner].sort().join(" v ");
+      const f=FP[key]=FP[key]||{n:0,pot:{}};f.n++;f.pot[tot[0].p]=(f.pot[tot[0].p]||0)+1;}
   }
   SIM_STATS={reach,N};
-  SIM_CW=CW;SIM_CC=CC;SIM_EXTRA={bestR,worstR,track:TRACK};
+  SIM_CW=CW;SIM_CC=CC;SIM_FP=FP;SIM_EXTRA={bestR,worstR,track:TRACK};
   rebuildProbTeams();
   const res=PLAYERS.map(p=>({p,w:win[p]/N,s:sec[p]/N,c:cons[p]/N,e:esum[p]/N})).sort((a,b)=>b.w-a.w);
   SIM_ODDS=res;
@@ -996,7 +1000,7 @@ function runSim(){
 function probSim(){runSim();}
 
 // ===== INTERESTING FACTS (auto-generated, shareable card) =====
-let SIM_ODDS=null,LAST_ROWS=null,SIM_CW=null,SIM_CC=null,SIM_EXTRA=null,FACT_SHUFFLE=0;
+let SIM_ODDS=null,LAST_ROWS=null,SIM_CW=null,SIM_CC=null,SIM_FP=null,SIM_EXTRA=null,FACT_SHUFFLE=0;
 function holdersOf(t){return PLAYERS.filter(p=>PICKS[p].includes(t));}
 // Seeded RNG: the fact selection is stable for the whole day (and identical for every visitor),
 // instead of reshuffling on every 3-minute auto-refresh. 🔀 bumps the seed for a new hand.
@@ -1074,9 +1078,18 @@ function buildFacts(){
   // 🥶 cold hand: most group-stage exits on one card
   const cold=rows.map(r=>({p:r.p,n:r.parts.filter(x=>x.stage==="group").length})).sort((a,b)=>b.n-a.n)[0];
   if(cold&&cold.n>=2)POOL.push(["🥶",`Cold hand: <b>${cold.p}</b> lost ${cold.n} picks in the group stage alone (−${40*cold.n} pts)`]);
-  // 💎 best wildcard (7th slot)
-  const w7=rows.map(r=>({p:r.p,t:PICKS[r.p][6],v:r.parts[6].pts,a:isAlive(r.parts[6].stage)})).sort((a,b)=>b.v-a.v)[0];
-  if(w7&&w7.v>=15)POOL.push(["💎",`Best wildcard: <b>${w7.p}</b>'s 7th pick <b>${w7.t}</b> is ${w7.a?"still alive on ≥"+w7.v:"worth +"+w7.v} pts — top of the 7th slots`]);
+  // 💎 best wildcard (7th slot) — shows every player tied at the top
+  const w7all=rows.map(r=>({p:r.p,t:PICKS[r.p][6],v:r.parts[6].pts,a:isAlive(r.parts[6].stage)}));
+  const w7max=Math.max(...w7all.map(x=>x.v));
+  const w7top=w7all.filter(x=>x.v===w7max);
+  if(w7max>=15){
+    const w7teams=[...new Set(w7top.map(x=>x.t))];
+    if(w7teams.length===1){
+      POOL.push(["💎",`Best wildcard: <b>${w7top.map(x=>x.p).join(" & ")}</b>'s 7th pick <b>${w7teams[0]}</b> is ${w7top[0].a?"still alive on ≥"+w7max:"worth +"+w7max} pts — top of the 7th slots`]);
+    }else{
+      POOL.push(["💎",`Best wildcard: ${w7top.map(x=>`<b>${x.p}</b> (${x.t})`).join(" & ")} share the top 7th slot on ${w7top.some(x=>x.a)?"≥":"+"}${w7max} pts`]);
+    }
+  }
   // 🤝 twin tickets: the pair sharing the most surviving picks
   let twin=null;
   for(let i=0;i<PLAYERS.length;i++)for(let j=i+1;j<PLAYERS.length;j++){
@@ -1123,6 +1136,29 @@ function buildFacts(){
       const hiT=hi?km.m.A:km.m.B,loT=hi?km.m.B:km.m.A,hiW=hi?km.wa:km.wb,loW=hi?km.wb:km.wa;
       const now=oddsMap[km.p]?` (${fmt(oddsMap[km.p].w)} today)`:"";
       POOL.push(["🧨",`Kingmaker: <b>${km.m.A} v ${km.m.B}</b> — <b>${km.p}</b>'s pot odds${now} become <b>${fmt(hiW)}</b> if ${hiT} win, but only <b>${fmt(loW)}</b> if ${loT} win`]);
+    }
+  }
+  // 🏁 final matchup: pick a plausible final (seeded) and show who takes the pot then
+  if(SIM_FP){
+    const pairs=Object.keys(SIM_FP).filter(k=>SIM_FP[k].n>=N*0.015);   // finals seen in ≥1.5% of runs
+    if(pairs.length){
+      const K=pairs[Math.floor(rng()*pairs.length)],f=SIM_FP[K];
+      const dist=Object.entries(f.pot).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>`<b>${e[0]}</b> ${(100*e[1]/f.n).toFixed(0)}%`);
+      POOL.push(["🏁",`If the final is <b>${K}</b> (${fmt(f.n/N)} of sims), the pot most often goes to: ${dist.join(" · ")} <span style="color:var(--muted)">(🔀 shuffles another final)</span>`]);
+    }
+  }
+  // 🚀 / 🚪 conditional next-round facts: a random pending game, seen from one team's side
+  if(SIM_EXTRA&&SIM_EXTRA.track.length){
+    const RN={1:"R16",2:"QF",3:"semi-final",4:"final"};
+    const ok=SIM_EXTRA.track.filter(m=>m.na>=N*0.03&&m.nb>=N*0.03);
+    const top3=(pot,n)=>Object.entries(pot).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>`<b>${e[0]}</b> ${(100*e[1]/n).toFixed(0)}%`).join(" · ");
+    if(ok.length){
+      const m=ok[Math.floor(rng()*ok.length)],aSide=rng()<0.5;
+      const T=aSide?m.A:m.B,O=aSide?m.B:m.A,n=aSide?m.na:m.nb,pot=aSide?m.pa:m.pb;
+      if(n>0)POOL.push(["🚀",`If <b>${T}</b> beat ${O} in the ${RN[m.r]}, the pot most often goes to: ${top3(pot,n)} <span style="color:var(--muted)">(🔀 shuffles another game)</span>`]);
+      const m2=ok[Math.floor(rng()*ok.length)],bSide=rng()<0.5;
+      const T2=bSide?m2.A:m2.B,O2=bSide?m2.B:m2.A,n2=bSide?m2.nb:m2.na,pot2=bSide?m2.pb:m2.pa;
+      if(n2>0)POOL.push(["🚪",`If <b>${T2}</b> go out to ${O2} in the ${RN[m2.r]}, the pot most often goes to: ${top3(pot2,n2)} <span style="color:var(--muted)">(🔀 shuffles another game)</span>`]);
     }
   }
   // ===== pick 8: anchors + 6 seeded-random from the pool =====
