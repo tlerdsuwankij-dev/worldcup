@@ -1169,7 +1169,7 @@ function buildFacts(){
     `<div class="sc-head"><div class="sc-title">📌 World Cup 2026 <span>Fun Facts</span></div>
       <div class="sc-meta">from live results &amp; ${N.toLocaleString()} simulations<br>as of <b>${today}</b></div></div>`+
     F.map(f=>`<div class="fact-row"><div class="fact-ico">${f[0]}</div><div>${f[1]}</div></div>`).join("")+
-    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live · showing ${F.length} of ${ANCHORS.length+POOL.length} facts today</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
+    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live · showing ${F.length} of the ${ANCHORS.length+POOL.length} facts (pool 23) that apply today</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
 }
 
 // ===== OPTA % UPDATER (paste or JSON feed) =====
@@ -1335,14 +1335,30 @@ document.getElementById("resetBtn").onclick=()=>{
   Object.keys(result).forEach(t=>result[t]="none");
   syncSelects();autoMode=false;setStatus("err","↺ Cleared. Press Refresh for live ESPN data.");render();
 };
-// Fixed-size capture shared by all shareable cards: renders at desktop layout, 920px wide
-// (PNG always 1840px at scale 2), with the iOS share-sheet / long-press path on Apple devices.
+// Story-size capture shared by all shareable cards, composed on a 1080×1920 (9:16) canvas —
+// ready to upload as an IG/FB/LINE story. The card's render width ADAPTS to its content:
+// a first capture measures the card, then it re-renders at the width whose reflowed shape
+// best matches the story frame, so short cards (facts) and tall cards (standings) both
+// fill the image instead of floating in empty space.
 function saveCardPNG(elId,baseName,title){
-  html2canvas(document.getElementById(elId),{
+  const shoot=cssW=>html2canvas(document.getElementById(elId),{
     backgroundColor:"#0c1118",scale:2,
-    windowWidth:1000,windowHeight:1400,   // media queries evaluate as desktop, not phone
-    onclone:doc=>{const c=doc.getElementById(elId);c.style.width="920px";c.style.maxWidth="920px";}
-  }).then(async canvas=>{
+    windowWidth:cssW+20,windowHeight:1200,   // media queries evaluate as phone → compact card styles
+    onclone:doc=>{const c=doc.getElementById(elId);c.style.width=cssW+"px";c.style.maxWidth=cssW+"px";}
+  });
+  shoot(540).then(async first=>{
+    const W=1080,H=1920,M=36,target=(H-2*M)/(W-2*M);   // inner 9:16 area aspect ≈ 1.83
+    const h1=first.height/2;                            // CSS-px height at 540 wide
+    let w2=Math.round(Math.sqrt(h1*540/target));        // text reflow ≈ constant area
+    w2=Math.max(340,Math.min(560,w2));
+    const cardCv=Math.abs(w2-540)<20?first:await shoot(w2);
+    const canvas=document.createElement("canvas");
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#0c1118";ctx.fillRect(0,0,W,H);
+    const s=Math.min((W-2*M)/cardCv.width,(H-2*M)/cardCv.height);
+    const w=cardCv.width*s,h=cardCv.height*s;
+    ctx.drawImage(cardCv,(W-w)/2,(H-h)/2,w,h);
     const name=baseName+new Date().toISOString().slice(0,10)+".png";
     // iPad/iPhone: Safari ignores programmatic downloads — use the share sheet, or a
     // long-press overlay as fallback. (iPadOS pretends to be a Mac, hence the touch check.)
