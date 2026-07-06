@@ -179,7 +179,9 @@
     .lb-name{width:44px;font-size:13px}
     .lb-prize{width:66px;font-size:11px}
     .chartbox{height:230px}
-    #summaryCard{padding:14px 10px 10px}
+    #summaryCard,#factsCard{padding:14px 10px 10px}
+    .fact-row{font-size:12.5px;gap:9px;padding:8px 2px}
+    .fact-ico{font-size:16px;width:22px}
     .sc-title{font-size:16px}
     .sc-row{grid-template-columns:26px 44px 1fr 42px 58px;gap:6px;padding:7px 4px}
     .sc-rank{width:26px;height:26px;font-size:12px}
@@ -304,7 +306,8 @@
     <div class="summary-bar">
       <h2>📌 Interesting facts</h2>
       <button id="factShot">⬇ Save as PNG</button>
-      <span style="font-size:12px;color:var(--muted)">Auto-generated from live results &amp; the 10,000 simulations — refreshes with every update.</span>
+      <button id="factShuffle">🔀 Shuffle</button>
+      <span style="font-size:12px;color:var(--muted)">8 facts drawn from a pool of 20 — auto-generated from live results &amp; the 10,000 simulations. Today's set is the same for every visitor; 🔀 deals a new hand.</span>
     </div>
     <div id="factsCard"></div>
   </div>
@@ -928,6 +931,13 @@ function runSim(){
   const board=document.getElementById("probBoard"); if(!board) return;
   const N=10000, win={},sec={},cons={},esum={},CW={},CC={};
   PLAYERS.forEach(p=>{win[p]=0;sec[p]=0;cons[p]=0;esum[p]=0;});
+  // extra tallies for the facts pool: rank spread (chaos) + pending-match pot swings (kingmaker)
+  const bestR={},worstR={};PLAYERS.forEach(p=>{bestR[p]=99;worstR[p]=0;});
+  const LOSE_SET={1:["r16"],2:["qf"],3:["third","fourth"],4:["runnerup"]};
+  const TRACK=[];
+  try{wiState().rounds.forEach(rd=>rd.ms.forEach(m=>{
+    if(m.A&&m.B&&!m.locked)TRACK.push({A:m.A,B:m.B,r:m.r,na:0,nb:0,pa:{},pb:{}});
+  }));}catch(e){}
   const reach={};
   const bump=(t,k)=>{(reach[t]=reach[t]||{L16:0,QF:0,SF:0,FIN:0,CH:0})[k]++;};
   for(let s=0;s<N;s++){
@@ -950,12 +960,23 @@ function runSim(){
     const tot=PLAYERS.map(p=>{const v=PICKS[p].reduce((a,t)=>a+pts[t],0);esum[p]+=v;return {p,v:v+Math.random()*1e-4};});
     tot.sort((a,b)=>b.v-a.v);
     win[tot[0].p]++;sec[tot[1].p]++;cons[tot[tot.length-3].p]++;
+    tot.forEach((o,i)=>{const rk=i+1;if(rk<bestR[o.p])bestR[o.p]=rk;if(rk>worstR[o.p])worstR[o.p]=rk;});
+    // kingmaker tally: who takes the pot, split by the winner of each pending match
+    const potW=tot[0].p;
+    TRACK.forEach(m=>{
+      const fa=finish[m.A],fb=finish[m.B];
+      if(fa===undefined||fb===undefined)return;
+      const aLost=LOSE_SET[m.r].includes(fa),bLost=LOSE_SET[m.r].includes(fb);
+      if(aLost===bLost)return;
+      if(bLost){m.na++;m.pa[potW]=(m.pa[potW]||0)+1;}
+      else{m.nb++;m.pb[potW]=(m.pb[potW]||0)+1;}
+    });
     // joint tally: which player takes the pot, given who becomes champion
     const champ=Object.keys(finish).find(t=>finish[t]==="champion");
     if(champ){CC[champ]=(CC[champ]||0)+1;const cw=CW[champ]=CW[champ]||{};cw[tot[0].p]=(cw[tot[0].p]||0)+1;}
   }
   SIM_STATS={reach,N};
-  SIM_CW=CW;SIM_CC=CC;
+  SIM_CW=CW;SIM_CC=CC;SIM_EXTRA={bestR,worstR,track:TRACK};
   rebuildProbTeams();
   const res=PLAYERS.map(p=>({p,w:win[p]/N,s:sec[p]/N,c:cons[p]/N,e:esum[p]/N})).sort((a,b)=>b.w-a.w);
   SIM_ODDS=res;
@@ -975,38 +996,47 @@ function runSim(){
 function probSim(){runSim();}
 
 // ===== INTERESTING FACTS (auto-generated, shareable card) =====
-let SIM_ODDS=null,LAST_ROWS=null,SIM_CW=null,SIM_CC=null;
+let SIM_ODDS=null,LAST_ROWS=null,SIM_CW=null,SIM_CC=null,SIM_EXTRA=null,FACT_SHUFFLE=0;
 function holdersOf(t){return PLAYERS.filter(p=>PICKS[p].includes(t));}
+// Seeded RNG: the fact selection is stable for the whole day (and identical for every visitor),
+// instead of reshuffling on every 3-minute auto-refresh. 🔀 bumps the seed for a new hand.
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function factRng(){const d=new Date();return mulberry32(d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()+FACT_SHUFFLE*7919);}
 function buildFacts(){
   const box=document.getElementById("factsCard");
   if(!box||!LAST_ROWS||!SIM_ODDS)return;
-  const rows=LAST_ROWS,odds=SIM_ODDS,F=[];
+  const rows=LAST_ROWS,odds=SIM_ODDS;
   const fmt=x=>(100*x).toFixed(1)+"%";
-  // leader (handles ties)
+  const ord=n=>n+(n===1?"st":n===2?"nd":n===3?"rd":"th");
+  const N=SIM_STATS?SIM_STATS.N:10000;
+  const rng=factRng();
+  const rankMap={};rows.forEach((r,i)=>rankMap[r.p]=i+1);
+  const oddsMap={};odds.forEach(o=>oddsMap[o.p]=o);
+  // ===== 2 ANCHORS (always shown) =====
+  const ANCHORS=[],POOL=[];
   const ties=rows.filter(r=>r.total===rows[0].total).map(r=>r.p);
-  F.push(["👑",ties.length>1
+  ANCHORS.push(["👑",ties.length>1
     ?`<b>${ties.join(" & ")}</b> share the lead on <b>${rows[0].total} pts</b>`
     :`<b>${rows[0].p}</b> leads on <b>${rows[0].total} pts</b> — ${rows[0].total-rows[1].total} clear of ${rows[1].p}`]);
-  // pot favourite
-  F.push(["🎯",`<b>${odds[0].p}</b> lifts the pot in <b>${fmt(odds[0].w)}</b> of 10,000 simulated futures`]);
-  // dark horse: best sim odds among players currently ranked 4th or lower
-  const rankMap={};rows.forEach((r,i)=>rankMap[r.p]=i+1);
+  ANCHORS.push(["🎯",`<b>${odds[0].p}</b> lifts the pot in <b>${fmt(odds[0].w)}</b> of ${N.toLocaleString()} simulated futures`]);
+  // ===== POOL (6 drawn per day; 🔀 redraws) =====
+  // 🐎 dark horse: best sim odds among players currently ranked 4th or lower
   const dark=odds.find(o=>rankMap[o.p]>=4&&o.w>=0.02);
-  if(dark)F.push(["🐎",`Dark horse: <b>${dark.p}</b> only sits ${rankMap[dark.p]}th today, but still wins <b>${fmt(dark.w)}</b> of futures`]);
-  // consolation favourite
+  if(dark)POOL.push(["🐎",`Dark horse: <b>${dark.p}</b> only sits ${ord(rankMap[dark.p])} today, but still wins <b>${fmt(dark.w)}</b> of futures`]);
+  // 🪙 consolation favourite
   const cons=[...odds].sort((a,b)=>b.c-a.c)[0];
-  if(cons&&cons.c>0.1)F.push(["🪙",`The ฿500 consolation (3rd-from-last) most often lands on <b>${cons.p}</b> (${fmt(cons.c)})`]);
+  if(cons&&cons.c>0.1)POOL.push(["🪙",`The ฿500 consolation (3rd-from-last) most often lands on <b>${cons.p}</b> (${fmt(cons.c)})`]);
   // 💰 best expected payout (75% / 20% / 5% of the ฿10,000 pot)
   const ev=[...odds].map(o=>({p:o.p,v:o.w*7500+o.s*2000+o.c*500})).sort((a,b)=>b.v-a.v)[0];
-  if(ev)F.push(["💰",`Best ticket value: <b>${ev.p}</b> — simulated expected payout <b>฿${Math.round(ev.v).toLocaleString()}</b> on the ฿1,000 stake`]);
-  // 🔮 conditional champion: pick a plausible champion at random and show who takes the pot then
+  if(ev)POOL.push(["💰",`Best ticket value: <b>${ev.p}</b> — simulated expected payout <b>฿${Math.round(ev.v).toLocaleString()}</b> on the ฿1,000 stake`]);
+  // 🔮 conditional champion: pick a plausible champion (seeded) and show who takes the pot then
   if(SIM_CC){
     const cands=Object.keys(SIM_CC).filter(t=>SIM_CC[t]>=200);   // teams winning ≥2% of runs
     if(cands.length){
-      const T=cands[Math.floor(Math.random()*cands.length)];
+      const T=cands[Math.floor(rng()*cands.length)];
       const dist=Object.entries(SIM_CW[T]||{}).sort((a,b)=>b[1]-a[1]).slice(0,3)
         .map(e=>`<b>${e[0]}</b> ${(100*e[1]/SIM_CC[T]).toFixed(0)}%`);
-      if(dist.length)F.push(["🔮",`If <b>${T}</b> win it all, the pot most often goes to: ${dist.join(" · ")} <span style="color:var(--muted)">(team varies each refresh)</span>`]);
+      if(dist.length)POOL.push(["🔮",`If <b>${T}</b> win it all, the pot most often goes to: ${dist.join(" · ")} <span style="color:var(--muted)">(🔀 shuffles another team)</span>`]);
     }
   }
   // ⚔️ pivot game with the floor swing on each outcome
@@ -1023,19 +1053,87 @@ function buildFacts(){
   const piv=pend.sort((a,b)=>b.n-a.n)[0];
   if(piv){
     const g=gainMap[piv.m.r],hA=holdersOf(piv.m.A),hB=holdersOf(piv.m.B);
-    F.push(["⚔️",`Pivot game <b>${piv.m.A} v ${piv.m.B}</b>: a ${piv.m.A} win lifts ${hA.length?"<b>"+hA.join(", ")+"</b>":"nobody"} +${g} floor pts; a ${piv.m.B} win lifts ${hB.length?"<b>"+hB.join(", ")+"</b>":"nobody"}`]);
+    POOL.push(["⚔️",`Pivot game <b>${piv.m.A} v ${piv.m.B}</b>: a ${piv.m.A} win lifts ${hA.length?"<b>"+hA.join(", ")+"</b>":"nobody"} +${g} floor pts; a ${piv.m.B} win lifts ${hB.length?"<b>"+hB.join(", ")+"</b>":"nobody"}`]);
   }
-  // most likely champion
+  // 🏆 most likely champion
   const chFav=Object.keys(OPTA).filter(t=>result[t]!==undefined&&isAlive(result[t]))
     .sort((a,b)=>OPTA[b].CH-OPTA[a].CH)[0];
   if(chFav){const hs=holdersOf(chFav);
-    F.push(["🏆",`Most likely champion right now: <b>${chFav}</b> (${OPTA[chFav].CH.toFixed(1)}%) — held by ${hs.length?"<b>"+hs.join(", ")+"</b>":"nobody in the pool"}`]);}
+    POOL.push(["🏆",`Most likely champion right now: <b>${chFav}</b> (${OPTA[chFav].CH.toFixed(1)}%) — held by ${hs.length?"<b>"+hs.join(", ")+"</b>":"nobody in the pool"}`]);}
+  // 📉 biggest bust: the group-stage exit held by the most players
+  const busts=Object.keys(result).filter(t=>result[t]==="group"&&holdersOf(t).length>0)
+    .map(t=>({t,h:holdersOf(t)})).sort((a,b)=>b.h.length-a.h.length);
+  if(busts.length){const b=busts[0];
+    POOL.push(["📉",`Biggest bust: <b>${b.t}</b> went out in the groups, costing <b>${b.h.join(", ")}</b> −40 each (−${40*b.h.length} pts total)`]);}
+  // 🔥 herd pick: the surviving team on the most cards
+  const herd=Object.keys(result).filter(t=>isAlive(result[t])).map(t=>({t,n:holdersOf(t).length})).sort((a,b)=>b.n-a.n)[0];
+  if(herd&&herd.n>=4)POOL.push(["🔥",`Herd pick: <b>${herd.t}</b> sits on <b>${herd.n}/10</b> cards — one result moves half the pool at once`]);
+  // 🦄 lone wolf: most picks nobody else holds
+  const lone=PLAYERS.map(p=>({p,u:PICKS[p].filter(t=>holdersOf(t).length===1)})).sort((a,b)=>b.u.length-a.u.length)[0];
+  if(lone&&lone.u.length>=2)POOL.push(["🦄",`Lone wolf: <b>${lone.p}</b> holds ${lone.u.length} picks nobody else touched (${lone.u.join(", ")})`]);
+  // 🥶 cold hand: most group-stage exits on one card
+  const cold=rows.map(r=>({p:r.p,n:r.parts.filter(x=>x.stage==="group").length})).sort((a,b)=>b.n-a.n)[0];
+  if(cold&&cold.n>=2)POOL.push(["🥶",`Cold hand: <b>${cold.p}</b> lost ${cold.n} picks in the group stage alone (−${40*cold.n} pts)`]);
+  // 💎 best wildcard (7th slot)
+  const w7=rows.map(r=>({p:r.p,t:PICKS[r.p][6],v:r.parts[6].pts,a:isAlive(r.parts[6].stage)})).sort((a,b)=>b.v-a.v)[0];
+  if(w7&&w7.v>=15)POOL.push(["💎",`Best wildcard: <b>${w7.p}</b>'s 7th pick <b>${w7.t}</b> is ${w7.a?"still alive on ≥"+w7.v:"worth +"+w7.v} pts — top of the 7th slots`]);
+  // 🤝 twin tickets: the pair sharing the most surviving picks
+  let twin=null;
+  for(let i=0;i<PLAYERS.length;i++)for(let j=i+1;j<PLAYERS.length;j++){
+    const sh=PICKS[PLAYERS[i]].filter(t=>isAlive(result[t])&&PICKS[PLAYERS[j]].includes(t));
+    if(!twin||sh.length>twin.sh.length)twin={a:PLAYERS[i],b:PLAYERS[j],sh};
+  }
+  if(twin&&twin.sh.length>=3)POOL.push(["🤝",`Twin tickets: <b>${twin.a} & ${twin.b}</b> share ${twin.sh.length} surviving picks (${twin.sh.join(", ")}) — near-identical fates`]);
+  // 😰 leader's sweat
+  const lw=oddsMap[rows[0].p];
+  if(lw&&ties.length===1)POOL.push(["😰",`Leader's sweat: even in front, <b>${rows[0].p}</b> still misses the pot in <b>${fmt(1-lw.w)}</b> of simulated futures`]);
+  // 🔒 drawing dead: zero pot wins across all sims
+  const dead=odds.filter(o=>o.w===0).map(o=>o.p);
+  if(dead.length)POOL.push(["🔒",`Drawing dead: <b>${dead.join(", ")}</b> took the pot in <b>0</b> of ${N.toLocaleString()} simulations — only pride (and the ฿500 consolation) left to play for`]);
+  // ⚖️ tightest duel: smallest gap between adjacent ranks
+  let du=null;
+  for(let i=0;i<rows.length-1;i++){const gap=rows[i].total-rows[i+1].total;if(!du||gap<du.gap)du={a:rows[i].p,b:rows[i+1].p,gap,rk:i+1};}
+  if(du&&oddsMap[du.a]&&oddsMap[du.b])POOL.push(["⚖️",`Tightest duel: <b>${du.a}</b> vs <b>${du.b}</b> — ${du.gap===0?"dead level":du.gap+" pts apart"} at ${ord(du.rk)}; sims give them ${fmt(oddsMap[du.a].w)} vs ${fmt(oddsMap[du.b].w)} for the pot`]);
+  // 🎢 wild ride: widest simulated finishing range
+  if(SIM_EXTRA){
+    const wild=PLAYERS.map(p=>({p,b:SIM_EXTRA.bestR[p],w:SIM_EXTRA.worstR[p]})).sort((a,b)=>(b.w-b.b)-(a.w-a.b))[0];
+    if(wild&&wild.w-wild.b>=5)POOL.push(["🎢",`Wild ride: <b>${wild.p}</b> finishes anywhere between <b>${ord(wild.b)}</b> and <b>${ord(wild.w)}</b> across the ${N.toLocaleString()} sims`]);
+  }
+  // 🪦 ghost champion: chance a team on nobody's card wins it all
+  if(SIM_CC){
+    const gh=Object.keys(SIM_CC).filter(t=>holdersOf(t).length===0);
+    const gp=gh.reduce((s,t)=>s+SIM_CC[t],0)/N;
+    if(gp>=0.005){
+      const names=gh.filter(t=>SIM_CC[t]>=N*0.005).sort((a,b)=>SIM_CC[b]-SIM_CC[a]).join(", ");
+      POOL.push(["🪦",`Ghost champion: <b>${fmt(gp)}</b> of sims end with a team on <i>nobody's</i> card lifting the trophy${names?" ("+names+")":""}`]);
+    }
+  }
+  // 🧨 kingmaker: the pending match that swings someone's pot odds the most
+  if(SIM_EXTRA&&SIM_EXTRA.track.length){
+    let km=null;
+    SIM_EXTRA.track.forEach(m=>{
+      if(m.na<N*0.03||m.nb<N*0.03)return;   // need enough samples on both branches
+      PLAYERS.forEach(p=>{
+        const wa=(m.pa[p]||0)/m.na,wb=(m.pb[p]||0)/m.nb,sw=Math.abs(wa-wb);
+        if(!km||sw>km.sw)km={m,p,wa,wb,sw};
+      });
+    });
+    if(km&&km.sw>=0.03){
+      const hi=km.wa>=km.wb;
+      const hiT=hi?km.m.A:km.m.B,loT=hi?km.m.B:km.m.A,hiW=hi?km.wa:km.wb,loW=hi?km.wb:km.wa;
+      const now=oddsMap[km.p]?` (${fmt(oddsMap[km.p].w)} today)`:"";
+      POOL.push(["🧨",`Kingmaker: <b>${km.m.A} v ${km.m.B}</b> — <b>${km.p}</b>'s pot odds${now} become <b>${fmt(hiW)}</b> if ${hiT} win, but only <b>${fmt(loW)}</b> if ${loT} win`]);
+    }
+  }
+  // ===== pick 8: anchors + 6 seeded-random from the pool =====
+  for(let i=POOL.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));const tmp=POOL[i];POOL[i]=POOL[j];POOL[j]=tmp;}
+  const F=ANCHORS.concat(POOL.slice(0,6));
   const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
   box.innerHTML=
     `<div class="sc-head"><div class="sc-title">📌 World Cup 2026 <span>Fun Facts</span></div>
-      <div class="sc-meta">from live results &amp; 10,000 simulations<br>as of <b>${today}</b></div></div>`+
+      <div class="sc-meta">from live results &amp; ${N.toLocaleString()} simulations<br>as of <b>${today}</b></div></div>`+
     F.map(f=>`<div class="fact-row"><div class="fact-ico">${f[0]}</div><div>${f[1]}</div></div>`).join("")+
-    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
+    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live · showing ${F.length} of ${ANCHORS.length+POOL.length} facts today</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
 }
 
 // ===== OPTA % UPDATER (paste or JSON feed) =====
@@ -1238,6 +1336,7 @@ function saveCardPNG(elId,baseName,title){
 }
 document.getElementById("shotBtn").onclick=()=>saveCardPNG("summaryCard","worldcup_standings_","World Cup standings");
 document.getElementById("factShot").onclick=()=>saveCardPNG("factsCard","worldcup_facts_","World Cup fun facts");
+document.getElementById("factShuffle").onclick=()=>{FACT_SHUFFLE++;buildFacts();};
 
 document.getElementById("liveNote").innerHTML=
   `<b>How it stays live:</b> When you open this page it pulls every World Cup 2026 knockout result from ESPN's public feed and auto-fills each team — losers get the points for the round they exited (R32 +5 → champion 120), and teams still playing count their guaranteed floor (R16 ≥15, etc.). It re-checks every 3 minutes while open, and the “Refresh” button forces an update. No PC scheduling needed — it’s fresh whenever the page is open and online. ` +
