@@ -68,9 +68,13 @@
   .summary-wrap{margin-top:22px}
   .summary-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
   .summary-bar h2{font-size:16px;margin:0}
-  #shotBtn{background:var(--accent);color:#3a2e00;border:none;font-weight:700}
-  #shotBtn:hover{filter:brightness(1.05)}
-  #summaryCard{background:linear-gradient(160deg,#11161f,#0c1118);border:1px solid #2c3444;border-radius:16px;padding:22px 22px 16px;max-width:920px}
+  #shotBtn,#factShot{background:var(--accent);color:#3a2e00;border:none;font-weight:700}
+  #shotBtn:hover,#factShot:hover{filter:brightness(1.05)}
+  #summaryCard,#factsCard{background:linear-gradient(160deg,#11161f,#0c1118);border:1px solid #2c3444;border-radius:16px;padding:22px 22px 16px;max-width:920px}
+  .fact-row{display:flex;gap:12px;align-items:flex-start;padding:9px 4px;border-bottom:1px dashed #2c3444;font-size:14px;line-height:1.5}
+  .fact-row:last-of-type{border-bottom:none}
+  .fact-ico{font-size:19px;flex-shrink:0;width:26px;text-align:center}
+  .fact-row b{color:var(--accent)}
   .sc-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;border-bottom:2px solid #2c3444;padding-bottom:12px;margin-bottom:14px}
   .sc-title{font-size:20px;font-weight:800;letter-spacing:.3px}
   .sc-title span{color:var(--accent)}
@@ -294,6 +298,15 @@
       </div>
     </div>
     <div class="note" id="probNote"></div>
+  </div>
+
+  <div class="summary-wrap">
+    <div class="summary-bar">
+      <h2>📌 Interesting facts</h2>
+      <button id="factShot">⬇ Save as PNG</button>
+      <span style="font-size:12px;color:var(--muted)">Auto-generated from live results &amp; the 10,000 simulations — refreshes with every update.</span>
+    </div>
+    <div id="factsCard"></div>
   </div>
 
 <script>
@@ -641,6 +654,7 @@ function render(){
   });
 
   const rows=PLAYERS.map(p=>({p,...playerScore(p)})).sort((a,b)=>b.total-a.total);
+  LAST_ROWS=rows;
   const max=Math.max(60,...rows.map(r=>Math.abs(r.total)));
   const pot=PLAYERS.length*1000,prizeMap={};
   prizeMap[rows[0].p]=pot*0.75;
@@ -912,7 +926,7 @@ function rebuildProbTeams(){
 }
 function runSim(){
   const board=document.getElementById("probBoard"); if(!board) return;
-  const N=10000, win={},sec={},cons={},esum={};
+  const N=10000, win={},sec={},cons={},esum={},CW={},CC={};
   PLAYERS.forEach(p=>{win[p]=0;sec[p]=0;cons[p]=0;esum[p]=0;});
   const reach={};
   const bump=(t,k)=>{(reach[t]=reach[t]||{L16:0,QF:0,SF:0,FIN:0,CH:0})[k]++;};
@@ -936,10 +950,15 @@ function runSim(){
     const tot=PLAYERS.map(p=>{const v=PICKS[p].reduce((a,t)=>a+pts[t],0);esum[p]+=v;return {p,v:v+Math.random()*1e-4};});
     tot.sort((a,b)=>b.v-a.v);
     win[tot[0].p]++;sec[tot[1].p]++;cons[tot[tot.length-3].p]++;
+    // joint tally: which player takes the pot, given who becomes champion
+    const champ=Object.keys(finish).find(t=>finish[t]==="champion");
+    if(champ){CC[champ]=(CC[champ]||0)+1;const cw=CW[champ]=CW[champ]||{};cw[tot[0].p]=(cw[tot[0].p]||0)+1;}
   }
   SIM_STATS={reach,N};
+  SIM_CW=CW;SIM_CC=CC;
   rebuildProbTeams();
   const res=PLAYERS.map(p=>({p,w:win[p]/N,s:sec[p]/N,c:cons[p]/N,e:esum[p]/N})).sort((a,b)=>b.w-a.w);
+  SIM_ODDS=res;
   const maxw=Math.max(...res.map(r=>r.w),0.01);
   let html="";
   res.forEach((r,i)=>{
@@ -951,8 +970,73 @@ function runSim(){
       <div class="pb-cons">${(r.c*100).toFixed(0)}%</div></div>`;
   });
   board.innerHTML=html;
+  buildFacts();
 }
 function probSim(){runSim();}
+
+// ===== INTERESTING FACTS (auto-generated, shareable card) =====
+let SIM_ODDS=null,LAST_ROWS=null,SIM_CW=null,SIM_CC=null;
+function holdersOf(t){return PLAYERS.filter(p=>PICKS[p].includes(t));}
+function buildFacts(){
+  const box=document.getElementById("factsCard");
+  if(!box||!LAST_ROWS||!SIM_ODDS)return;
+  const rows=LAST_ROWS,odds=SIM_ODDS,F=[];
+  const fmt=x=>(100*x).toFixed(1)+"%";
+  // leader (handles ties)
+  const ties=rows.filter(r=>r.total===rows[0].total).map(r=>r.p);
+  F.push(["👑",ties.length>1
+    ?`<b>${ties.join(" & ")}</b> share the lead on <b>${rows[0].total} pts</b>`
+    :`<b>${rows[0].p}</b> leads on <b>${rows[0].total} pts</b> — ${rows[0].total-rows[1].total} clear of ${rows[1].p}`]);
+  // pot favourite
+  F.push(["🎯",`<b>${odds[0].p}</b> lifts the pot in <b>${fmt(odds[0].w)}</b> of 10,000 simulated futures`]);
+  // dark horse: best sim odds among players currently ranked 4th or lower
+  const rankMap={};rows.forEach((r,i)=>rankMap[r.p]=i+1);
+  const dark=odds.find(o=>rankMap[o.p]>=4&&o.w>=0.02);
+  if(dark)F.push(["🐎",`Dark horse: <b>${dark.p}</b> only sits ${rankMap[dark.p]}th today, but still wins <b>${fmt(dark.w)}</b> of futures`]);
+  // consolation favourite
+  const cons=[...odds].sort((a,b)=>b.c-a.c)[0];
+  if(cons&&cons.c>0.1)F.push(["🪙",`The ฿500 consolation (3rd-from-last) most often lands on <b>${cons.p}</b> (${fmt(cons.c)})`]);
+  // 💰 best expected payout (75% / 20% / 5% of the ฿10,000 pot)
+  const ev=[...odds].map(o=>({p:o.p,v:o.w*7500+o.s*2000+o.c*500})).sort((a,b)=>b.v-a.v)[0];
+  if(ev)F.push(["💰",`Best ticket value: <b>${ev.p}</b> — simulated expected payout <b>฿${Math.round(ev.v).toLocaleString()}</b> on the ฿1,000 stake`]);
+  // 🔮 conditional champion: pick a plausible champion at random and show who takes the pot then
+  if(SIM_CC){
+    const cands=Object.keys(SIM_CC).filter(t=>SIM_CC[t]>=200);   // teams winning ≥2% of runs
+    if(cands.length){
+      const T=cands[Math.floor(Math.random()*cands.length)];
+      const dist=Object.entries(SIM_CW[T]||{}).sort((a,b)=>b[1]-a[1]).slice(0,3)
+        .map(e=>`<b>${e[0]}</b> ${(100*e[1]/SIM_CC[T]).toFixed(0)}%`);
+      if(dist.length)F.push(["🔮",`If <b>${T}</b> win it all, the pot most often goes to: ${dist.join(" · ")} <span style="color:var(--muted)">(team varies each refresh)</span>`]);
+    }
+  }
+  // ⚔️ pivot game with the floor swing on each outcome
+  const curRound=t=>{const q=reachedInfo(t);return q?q[0]:-9;};
+  const gainMap={1:15,2:20,3:40,4:30};
+  const pend=[];
+  const stw=wiState();
+  stw.rounds.forEach(rd=>rd.ms.forEach(m=>{
+    if(m.A&&m.B&&!m.locked&&(curRound(m.A)===m.r||curRound(m.B)===m.r)){
+      const n=new Set(holdersOf(m.A).concat(holdersOf(m.B))).size;
+      if(n>0)pend.push({n,m});
+    }
+  }));
+  const piv=pend.sort((a,b)=>b.n-a.n)[0];
+  if(piv){
+    const g=gainMap[piv.m.r],hA=holdersOf(piv.m.A),hB=holdersOf(piv.m.B);
+    F.push(["⚔️",`Pivot game <b>${piv.m.A} v ${piv.m.B}</b>: a ${piv.m.A} win lifts ${hA.length?"<b>"+hA.join(", ")+"</b>":"nobody"} +${g} floor pts; a ${piv.m.B} win lifts ${hB.length?"<b>"+hB.join(", ")+"</b>":"nobody"}`]);
+  }
+  // most likely champion
+  const chFav=Object.keys(OPTA).filter(t=>result[t]!==undefined&&isAlive(result[t]))
+    .sort((a,b)=>OPTA[b].CH-OPTA[a].CH)[0];
+  if(chFav){const hs=holdersOf(chFav);
+    F.push(["🏆",`Most likely champion right now: <b>${chFav}</b> (${OPTA[chFav].CH.toFixed(1)}%) — held by ${hs.length?"<b>"+hs.join(", ")+"</b>":"nobody in the pool"}`]);}
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+  box.innerHTML=
+    `<div class="sc-head"><div class="sc-title">📌 World Cup 2026 <span>Fun Facts</span></div>
+      <div class="sc-meta">from live results &amp; 10,000 simulations<br>as of <b>${today}</b></div></div>`+
+    F.map(f=>`<div class="fact-row"><div class="fact-ico">${f[0]}</div><div>${f[1]}</div></div>`).join("")+
+    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
+}
 
 // ===== OPTA % UPDATER (paste or JSON feed) =====
 const OPTA_STORE="wc26_opta_override", OPTA_URL_STORE="wc26_opta_url";
@@ -1117,15 +1201,15 @@ document.getElementById("resetBtn").onclick=()=>{
   Object.keys(result).forEach(t=>result[t]="none");
   syncSelects();autoMode=false;setStatus("err","↺ Cleared. Press Refresh for live ESPN data.");render();
 };
-document.getElementById("shotBtn").onclick=()=>{
-  // Fixed-size capture: render the card at desktop layout and 920px width regardless of the
-  // viewer's screen — the PNG is always 1840px wide (920 × scale 2), identical on PC and phone.
-  html2canvas(document.getElementById("summaryCard"),{
+// Fixed-size capture shared by all shareable cards: renders at desktop layout, 920px wide
+// (PNG always 1840px at scale 2), with the iOS share-sheet / long-press path on Apple devices.
+function saveCardPNG(elId,baseName,title){
+  html2canvas(document.getElementById(elId),{
     backgroundColor:"#0c1118",scale:2,
     windowWidth:1000,windowHeight:1400,   // media queries evaluate as desktop, not phone
-    onclone:doc=>{const c=doc.getElementById("summaryCard");c.style.width="920px";c.style.maxWidth="920px";}
+    onclone:doc=>{const c=doc.getElementById(elId);c.style.width="920px";c.style.maxWidth="920px";}
   }).then(async canvas=>{
-    const name="worldcup_standings_"+new Date().toISOString().slice(0,10)+".png";
+    const name=baseName+new Date().toISOString().slice(0,10)+".png";
     // iPad/iPhone: Safari ignores programmatic downloads — use the share sheet, or a
     // long-press overlay as fallback. (iPadOS pretends to be a Mac, hence the touch check.)
     const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
@@ -1134,7 +1218,7 @@ document.getElementById("shotBtn").onclick=()=>{
         const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
         const file=new File([blob],name,{type:"image/png"});
         if(navigator.canShare&&navigator.canShare({files:[file]})){
-          await navigator.share({files:[file],title:"World Cup standings"});
+          await navigator.share({files:[file],title:title});
           return;                                    // user saved/shared via the sheet
         }
       }catch(e){ if(e&&e.name==="AbortError") return; /* user closed the sheet */ }
@@ -1151,7 +1235,9 @@ document.getElementById("shotBtn").onclick=()=>{
     a.download=name;
     a.href=canvas.toDataURL("image/png");a.click();
   });
-};
+}
+document.getElementById("shotBtn").onclick=()=>saveCardPNG("summaryCard","worldcup_standings_","World Cup standings");
+document.getElementById("factShot").onclick=()=>saveCardPNG("factsCard","worldcup_facts_","World Cup fun facts");
 
 document.getElementById("liveNote").innerHTML=
   `<b>How it stays live:</b> When you open this page it pulls every World Cup 2026 knockout result from ESPN's public feed and auto-fills each team — losers get the points for the round they exited (R32 +5 → champion 120), and teams still playing count their guaranteed floor (R16 ≥15, etc.). It re-checks every 3 minutes while open, and the “Refresh” button forces an update. No PC scheduling needed — it’s fresh whenever the page is open and online. ` +
