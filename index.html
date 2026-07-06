@@ -307,7 +307,7 @@
       <h2>📌 Interesting facts</h2>
       <button id="factShot">⬇ Save as PNG</button>
       <button id="factShuffle">🔀 Shuffle</button>
-      <span style="font-size:12px;color:var(--muted)">8 facts drawn from a pool of 23 — auto-generated from live results &amp; the 10,000 simulations. Today's set is the same for every visitor; 🔀 deals a new hand.</span>
+      <span style="font-size:12px;color:var(--muted)">8 facts drawn from a pool of 24 — auto-generated from live results &amp; the 10,000 simulations. Today's set is the same for every visitor; 🔀 deals a new hand.</span>
     </div>
     <div id="factsCard"></div>
   </div>
@@ -1097,9 +1097,12 @@ function buildFacts(){
     if(!twin||sh.length>twin.sh.length)twin={a:PLAYERS[i],b:PLAYERS[j],sh};
   }
   if(twin&&twin.sh.length>=3)POOL.push(["🤝",`Twin tickets: <b>${twin.a} & ${twin.b}</b> share ${twin.sh.length} surviving picks (${twin.sh.join(", ")}) — near-identical fates`]);
-  // 😰 leader's sweat
-  const lw=oddsMap[rows[0].p];
-  if(lw&&ties.length===1)POOL.push(["😰",`Leader's sweat: even in front, <b>${rows[0].p}</b> still misses the pot in <b>${fmt(1-lw.w)}</b> of simulated futures`]);
+  // 🥈 silver favourite: who most often lands the ฿2,000 runner-up prize
+  const sil=[...odds].sort((a,b)=>b.s-a.s)[0];
+  if(sil&&sil.s>0.12)POOL.push(["🥈",`The ฿2,000 runner-up prize most often goes to <b>${sil.p}</b> (${fmt(sil.s)} of sims) — while winning it all in ${fmt(sil.w)}`]);
+  // 🎭 bridesmaid: finishes 2nd far more often than 1st (never the same player as 🥈)
+  const brd=[...odds].filter(o=>o.s>=0.12&&o.s>o.w*1.5&&(!sil||o.p!==sil.p)).sort((a,b)=>(b.s-b.w)-(a.s-a.w))[0];
+  if(brd)POOL.push(["🎭",`Always the bridesmaid: <b>${brd.p}</b> finishes 2nd in <b>${fmt(brd.s)}</b> of sims, but 1st in only ${fmt(brd.w)} — one step short of the pot`]);
   // 🔒 drawing dead: zero pot wins across all sims
   const dead=odds.filter(o=>o.w===0).map(o=>o.p);
   if(dead.length)POOL.push(["🔒",`Drawing dead: <b>${dead.join(", ")}</b> took the pot in <b>0</b> of ${N.toLocaleString()} simulations — only pride (and the ฿500 consolation) left to play for`]);
@@ -1169,7 +1172,7 @@ function buildFacts(){
     `<div class="sc-head"><div class="sc-title">📌 World Cup 2026 <span>Fun Facts</span></div>
       <div class="sc-meta">from live results &amp; ${N.toLocaleString()} simulations<br>as of <b>${today}</b></div></div>`+
     F.map(f=>`<div class="fact-row"><div class="fact-ico">${f[0]}</div><div>${f[1]}</div></div>`).join("")+
-    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live · showing ${F.length} of the ${ANCHORS.length+POOL.length} facts (pool 23) that apply today</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
+    `<div class="sc-foot"><div>Odds: bracket Monte Carlo on Opta probabilities · Results: ESPN live · showing ${F.length} of the ${ANCHORS.length+POOL.length} facts (pool 24) that apply today</div><div>🏆120 · 🥈90 · 🥉65 · 4th50 · QF30 · R16 15 · R32 5 · group −40</div></div>`;
 }
 
 // ===== OPTA % UPDATER (paste or JSON feed) =====
