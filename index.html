@@ -933,11 +933,18 @@ function runSim(){
   PLAYERS.forEach(p=>{win[p]=0;sec[p]=0;cons[p]=0;esum[p]=0;});
   // extra tallies for the facts pool: rank spread (chaos) + pending-match pot swings (kingmaker)
   const bestR={},worstR={};PLAYERS.forEach(p=>{bestR[p]=99;worstR[p]=0;});
-  const LOSE_SET={1:["r16"],2:["qf"],3:["third","fourth"],4:["runnerup"]};
+  // finish state → furthest round reached (R32 loser=0 … champion=5); used for strict head-to-head checks
+  const RR={r32:0,r16:1,qf:2,third:3,fourth:3,runnerup:4,champion:5};
   const TRACK=[];
-  try{wiState().rounds.forEach(rd=>rd.ms.forEach(m=>{
-    if(m.A&&m.B&&!m.locked)TRACK.push({A:m.A,B:m.B,r:m.r,na:0,nb:0,pa:{},pb:{}});
-  }));}catch(e){}
+  // Facts must be identical for every visitor and reference REAL fixtures only, so the tracked
+  // pending matches come from the picks-free tree — what-if dropdown choices are ignored here.
+  {
+    const savedPicks=wiPicks;wiPicks={};
+    try{wiState().rounds.forEach(rd=>rd.ms.forEach(m=>{
+      if(m.A&&m.B&&!m.locked)TRACK.push({A:m.A,B:m.B,r:m.r,na:0,nb:0,pa:{},pb:{}});
+    }));}catch(e){}
+    wiPicks=savedPicks;
+  }
   const reach={};
   const bump=(t,k)=>{(reach[t]=reach[t]||{L16:0,QF:0,SF:0,FIN:0,CH:0})[k]++;};
   for(let s=0;s<N;s++){
@@ -964,12 +971,12 @@ function runSim(){
     // kingmaker tally: who takes the pot, split by the winner of each pending match
     const potW=tot[0].p;
     TRACK.forEach(m=>{
-      const fa=finish[m.A],fb=finish[m.B];
-      if(fa===undefined||fb===undefined)return;
-      const aLost=LOSE_SET[m.r].includes(fa),bLost=LOSE_SET[m.r].includes(fb);
-      if(aLost===bLost)return;
-      if(bLost){m.na++;m.pa[potW]=(m.pa[potW]||0)+1;}
-      else{m.nb++;m.pb[potW]=(m.pb[potW]||0)+1;}
+      // strict head-to-head: count this sim only if the two teams actually met at this round —
+      // one went out exactly here AND the other advanced past it (same bracket slot ⇒ they played).
+      const ra=RR[finish[m.A]],rb=RR[finish[m.B]];
+      if(ra===undefined||rb===undefined)return;
+      if(rb===m.r&&ra>m.r){m.na++;m.pa[potW]=(m.pa[potW]||0)+1;}      // A beat B in this match
+      else if(ra===m.r&&rb>m.r){m.nb++;m.pb[potW]=(m.pb[potW]||0)+1;} // B beat A in this match
     });
     // joint tally: which player takes the pot, given who becomes champion
     const champ=Object.keys(finish).find(t=>finish[t]==="champion");
@@ -1103,9 +1110,16 @@ function buildFacts(){
   // 🎭 bridesmaid: finishes 2nd far more often than 1st (never the same player as 🥈)
   const brd=[...odds].filter(o=>o.s>=0.12&&o.s>o.w*1.5&&(!sil||o.p!==sil.p)).sort((a,b)=>(b.s-b.w)-(a.s-a.w))[0];
   if(brd)POOL.push(["🎭",`Always the bridesmaid: <b>${brd.p}</b> finishes 2nd in <b>${fmt(brd.s)}</b> of sims, but 1st in only ${fmt(brd.w)} — one step short of the pot`]);
-  // 🔒 drawing dead: zero pot wins across all sims
-  const dead=odds.filter(o=>o.w===0).map(o=>o.p);
-  if(dead.length)POOL.push(["🔒",`Drawing dead: <b>${dead.join(", ")}</b> took the pot in <b>0</b> of ${N.toLocaleString()} simulations — only pride (and the ฿500 consolation) left to play for`]);
+  // 🔒 drawing dead: zero pot wins across all sims — the tail lists only prizes the sims say
+  // are still genuinely reachable for someone in this group (2nd ฿2,000 / consolation ฿500)
+  const dead=odds.filter(o=>o.w===0);
+  if(dead.length){
+    const left=["pride"];
+    if(dead.some(o=>o.s>0))left.push("a shot at the ฿2,000 silver lining");
+    if(dead.some(o=>o.c>0))left.push("the ฿500 beer money");
+    const tail=left.length>1?left.slice(0,-1).join(", ")+" and "+left[left.length-1]:left[0];
+    POOL.push(["🔒",`Drawing dead: <b>${dead.map(o=>o.p).join(", ")}</b> took the pot in <b>0</b> of ${N.toLocaleString()} simulations — only ${tail} left to play for`]);
+  }
   // ⚖️ tightest duel: smallest gap between adjacent ranks
   let du=null;
   for(let i=0;i<rows.length-1;i++){const gap=rows[i].total-rows[i+1].total;if(!du||gap<du.gap)du={a:rows[i].p,b:rows[i+1].p,gap,rk:i+1};}
