@@ -1,0 +1,12 @@
+{
+  "name": "worldcup-opta-updater",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scrapes Opta Analyst World Cup predictions into opta.json (run by GitHub Actions)",
+  "scripts": {
+    "update-opta": "node scripts/update-opta.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.61.1"
+  }
+}
