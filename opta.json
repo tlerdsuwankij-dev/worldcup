@@ -1,42 +1,35 @@
 {
-  "date": "12 Jul 2026, 01:57 UTC",
-  "generated_at": "2026-07-12T01:57:17.020Z",
+  "date": "12 Jul 2026, 08:03 UTC",
+  "generated_at": "2026-07-12T08:03:49.383Z",
   "source": "https://theanalyst.com/competition/fifa-world-cup/predictions",
   "teams": {
     "France": {
       "L16": 100,
       "QF": 100,
       "SF": 100,
-      "FIN": 57.44,
+      "FIN": 57.7,
       "CH": 34.05
     },
     "Spain": {
       "L16": 100,
       "QF": 100,
       "SF": 100,
-      "FIN": 42.56,
-      "CH": 23.99
+      "FIN": 42.3,
+      "CH": 23.45
     },
     "England": {
       "L16": 100,
       "QF": 100,
       "SF": 100,
-      "FIN": 52.8,
-      "CH": 22.86
+      "FIN": 50.94,
+      "CH": 21.94
     },
     "Argentina": {
       "L16": 100,
       "QF": 100,
-      "SF": 89.35,
-      "FIN": 43.68,
-      "CH": 18.21
-    },
-    "Switzerland": {
-      "L16": 100,
-      "QF": 100,
-      "SF": 10.65,
-      "FIN": 3.52,
-      "CH": 0.9
+      "SF": 100,
+      "FIN": 49.06,
+      "CH": 20.55
     },
     "Mexico": {
       "L16": 100,
@@ -48,6 +41,13 @@
     "South Africa": {
       "L16": 0,
       "QF": 0,
+      "SF": 0,
+      "FIN": 0,
+      "CH": 0
+    },
+    "Switzerland": {
+      "L16": 100,
+      "QF": 100,
       "SF": 0,
       "FIN": 0,
       "CH": 0
@@ -207,10 +207,10 @@
       "CH": 0
     },
     "Uzbekistan": {
-      "L16": 31.8,
-      "QF": 26.1,
-      "SF": 15,
-      "FIN": 7,
+      "L16": 0,
+      "QF": 0,
+      "SF": 0,
+      "FIN": 0,
       "CH": 0
     },
     "Croatia": {
