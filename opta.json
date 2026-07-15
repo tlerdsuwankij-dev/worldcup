@@ -1,6 +1,6 @@
 {
-  "date": "15 Jul 2026, 07:53 UTC",
-  "generated_at": "2026-07-15T07:53:28.901Z",
+  "date": "15 Jul 2026, 13:18 UTC",
+  "generated_at": "2026-07-15T13:18:02.094Z",
   "source": "https://theanalyst.com/competition/fifa-world-cup/predictions",
   "teams": {
     "Spain": {
@@ -207,10 +207,10 @@
       "CH": 0
     },
     "Uzbekistan": {
-      "L16": 8,
-      "QF": 0,
-      "SF": 0,
-      "FIN": 0,
+      "L16": 40.9,
+      "QF": 25.7,
+      "SF": 18,
+      "FIN": 9,
       "CH": 0
     },
     "Croatia": {
