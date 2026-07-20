@@ -1,9 +1,14 @@
 name: Update Opta probabilities
 
+# TOURNAMENT COMPLETE — 19 Jul 2026. Spain are champions, so every probability on the Opta hub
+# is now a settled 0 or 100 and cannot move again. The 6-hourly schedule is disabled: leaving it
+# on would keep spending Actions minutes, and would eventually start rewriting opta.json with
+# whatever the hub shows once it rolls over to the next competition. Re-enable by uncommenting
+# the two schedule lines below.
 on:
-  schedule:
-    - cron: "0 */6 * * *"   # every 6 hours
-  workflow_dispatch:         # manual "Run workflow" button
+  # schedule:
+  #   - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:         # manual "Run workflow" button — still available on demand
 
 permissions:
   contents: write
