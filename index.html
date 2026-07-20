@@ -213,7 +213,7 @@
 
   <div class="controls">
     <button id="refreshBtn">↻ Refresh from ESPN now</button>
-    <button id="snapBtn">⤺ Restore built-in snapshot</button>
+    <button id="snapBtn" title="Reset every team to the built-in 20 Jul 2026 snapshot — the final tournament standings">⤺ Restore final standings (20 Jul)</button>
     <button id="resetBtn">↺ Clear all</button>
     <span class="pool" id="poolInfo"></span>
   </div>
@@ -357,15 +357,20 @@ const STAGE_PTS = Object.fromEntries(STAGES.map(s=>[s[0],s[2]]));
 const STAGE_LBL = Object.fromEntries(STAGES.map(s=>[s[0],s[1]]));
 const isAlive = k=>k.startsWith("alive");
 
-// ===== BUILT-IN SNAPSHOT (fallback if ESPN unreachable) — 6 Jul 2026 =====
-// France & Morocco through to QF; Canada & Paraguay out at R16; other R16 games pending.
+// ===== BUILT-IN SNAPSHOT (fallback if ESPN unreachable) — 20 Jul 2026, tournament complete =====
+// Sourced from opta.json (20 Jul 02:12 UTC): a surviving team's reach row still carries 100s, so
+// Spain 100 across = champion, Argentina FIN 100 / CH 0 = runner-up, England & France SF 100 /
+// FIN 0 = both lost their semis. England beat France in the third-place play-off (confirmed).
+// NOTE: Opta zeroes an eliminated team's whole row, so an all-zero row says only "out", not which
+// round they went out in — Portugal and Egypt are placed at r16 because the official R16 tree in
+// BRACKET_FALLBACK has them in R16 ties (Portugal–Spain, Argentina–Egypt).
 const SNAPSHOT = {
-  England:"alive16", Portugal:"alive16", Spain:"alive16", France:"aliveqf",
-  Croatia:"r32", Switzerland:"alive16", Norway:"alive16", Turkey:"group", Scotland:"group",
+  England:"third", Portugal:"r16", Spain:"champion", France:"fourth",
+  Croatia:"r32", Switzerland:"qf", Norway:"qf", Turkey:"group", Scotland:"group",
   Japan:"r32", "South Korea":"group", Uzbekistan:"group",
-  Morocco:"aliveqf", "Ivory Coast":"r32", Egypt:"alive16",
-  USA:"alive16", Mexico:"alive16", Canada:"r16",
-  Brazil:"alive16", Argentina:"alive16", Uruguay:"group"
+  Morocco:"qf", "Ivory Coast":"r32", Egypt:"r16",
+  USA:"r16", Mexico:"r16", Canada:"r16",
+  Brazil:"r16", Argentina:"runnerup", Uruguay:"group"
 };
 const result = {};
 GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
@@ -380,16 +385,46 @@ GROUPS.forEach(([_,ts])=>ts.forEach(t=>TEAMSET[norm(t)]=t));
 function canon(n){return TEAMSET[norm(n)]||null;}
 
 // ===== ESPN ROUND RULES =====  [winnerStatus, loserStatus]
-const ROUND_ORDER={"round-of-32":1,"round-of-16":2,"quarterfinals":3,"semifinals":4,"3rd-place":5,"third-place":5,"final":6};
+// Canonical round keys. ESPN's season.slug spelling has changed between rounds before
+// (e.g. "3rd-place" vs "third-place-playoff"), so never key off the raw slug — resolve it
+// through roundOf() below, which also reads the event name and the competition notes.
+const ROUND_ORDER={"round-of-32":1,"round-of-16":2,"quarterfinals":3,"semifinals":4,"third-place":5,"final":6};
 const OUTCOME={
   "round-of-32":["alive16","r32"], "round-of-16":["aliveqf","r16"],
   "quarterfinals":["alivesf","qf"], "semifinals":["alivef","alivesf"],
-  "3rd-place":["third","fourth"], "third-place":["third","fourth"], "final":["champion","runnerup"]
+  "third-place":["third","fourth"], "final":["champion","runnerup"]
 };
+// Resolve any human/ESPN spelling of a round to a canonical key. Order matters:
+// "quarterfinals"/"semifinals" both contain "final", and the 3rd-place game is often
+// labelled "...Final" too, so the specific tests must run before the plain final test.
+function roundKey(s){
+  const x=(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  if(!x) return null;
+  if(/\br ?32\b|round of 32/.test(x))            return "round-of-32";
+  if(/\br ?16\b|round of 16|last 16/.test(x))    return "round-of-16";
+  if(/quarter|\bqf\b/.test(x))                   return "quarterfinals";
+  if(/semi|\bsf\b/.test(x))                      return "semifinals";
+  if(/(3rd|third)\s*place|place\s*(3rd|third)|bronze|play ?off for third/.test(x)) return "third-place";
+  if(/\bfinal\b/.test(x))                        return "final";
+  return null;
+}
+// Try every field ESPN might carry the round in, most reliable first.
+function roundOf(ev,comp){
+  const cands=[ev&&ev.season&&ev.season.slug];
+  const notes=(comp&&comp.notes)||ev.notes||[];
+  notes.forEach(n=>{if(n){cands.push(n.headline);cands.push(n.type);}});
+  if(comp&&comp.type)cands.push(comp.type.name||comp.type.text);
+  cands.push(ev&&ev.name, ev&&ev.shortName);
+  for(let i=0;i<cands.length;i++){const k=roundKey(cands[i]);if(k)return k;}
+  return null;
+}
 
 let autoMode=true; // ESPN fills results; manual edits flip this off until next refresh
 const ESPN="https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=";
-function koDates(){const out=[];let d=new Date("2026-06-28T12:00:00Z");const end=new Date("2026-07-19T12:00:00Z");
+// ESPN buckets a fixture by US Eastern date, so a late-UTC kickoff can land on the
+// previous or next day. Pad both ends of the knockout window rather than sitting flush
+// against it — the old range stopped at 19 Jul and could miss the last games entirely.
+function koDates(){const out=[];let d=new Date("2026-06-26T12:00:00Z");const end=new Date("2026-07-22T12:00:00Z");
   while(d<=end){out.push(d.toISOString().slice(0,10).replace(/-/g,""));d.setUTCDate(d.getUTCDate()+1);}return out;}
 
 function setStatus(cls,msg){const el=document.getElementById("statusbar");el.className="statusbar "+cls;el.innerHTML=msg;}
@@ -404,24 +439,34 @@ async function fetchLive(){
   if(!events.length){fallback("No data returned");return;}
 
   const best={};let done=0;const fixtures={};
+  const seen={};          // canonical round -> completed games parsed (shown in the status bar)
+  const unknown={};       // events we could NOT classify, so a slug change is visible not silent
   events.forEach(ev=>{
     const comp=ev.competitions&&ev.competitions[0];if(!comp)return;
-    const slug=(ev.season&&ev.season.slug)||"";const ord=ROUND_ORDER[slug];if(!ord)return;
     const cs=comp.competitors||[];if(cs.length<2)return;
+    const rk=roundOf(ev,comp);
+    if(!rk){
+      // Only worth flagging if it looks like a knockout game between two known teams;
+      // group-stage fixtures legitimately don't classify.
+      const nm=(ev.season&&ev.season.slug)||ev.name||"?";
+      if(!/group/i.test(nm))unknown[nm]=(unknown[nm]||0)+1;
+      return;
+    }
+    const ord=ROUND_ORDER[rk];if(!ord)return;
     if(!(comp.status&&comp.status.type&&comp.status.type.completed)){
       // pending knockout game → remember the pairing for the bracket simulation
       const names=cs.map(c=>{const raw=c.team&&(c.team.displayName||c.team.name);return canon(raw)||raw;});
-      if(names[0]&&names[1])(fixtures[slug]=fixtures[slug]||[]).push([names[0],names[1]]);
+      if(names[0]&&names[1])(fixtures[rk]=fixtures[rk]||[]).push([names[0],names[1]]);
       return;
     }
     let counted=false;
     cs.forEach(c=>{
       const t=canon(c.team&&(c.team.displayName||c.team.name));if(!t)return;
-      const st=OUTCOME[slug][c.winner===true?0:1];if(!st)return;
+      const st=OUTCOME[rk][c.winner===true?0:1];if(!st)return;
       if(!best[t]||ord>=best[t].order)best[t]={order:ord,status:st};
       counted=true;
     });
-    if(counted)done++;
+    if(counted){done++;seen[rk]=(seen[rk]||0)+1;}
   });
 
   // Start from snapshot, override with live completed results
@@ -430,17 +475,20 @@ async function fetchLive(){
   applyFixtures(fixtures);
   syncSelects(); autoMode=true;
   const now=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+  const uk=Object.keys(unknown);
+  const warn=uk.length?`<br><span style="color:var(--red)">⚠ ${uk.length} knockout event(s) the parser couldn't classify: <code>${uk.slice(0,4).join(", ")}</code> — the round label in ESPN's feed changed; extend <code>roundKey()</code>.</span>`:"";
   if(done===0){
-    setStatus("err",`🟡 Connected to ESPN (${now}), but its feed lists no <i>completed</i> knockout games yet — showing the built-in snapshot. This page will fill in automatically the moment ESPN publishes finished results.`);
+    setStatus("err",`🟡 Connected to ESPN (${now}), but its feed lists no <i>completed</i> knockout games yet — showing the built-in snapshot. This page will fill in automatically the moment ESPN publishes finished results.${warn}`);
   }else{
-    setStatus("ok",`🟢 Live from ESPN · ${done} completed knockout games · updated ${now}. <span style="color:var(--muted)">Auto-refreshes every 3 min; you can still edit any dropdown manually.</span>`);
+    const br=Object.keys(seen).sort((a,b)=>ROUND_ORDER[a]-ROUND_ORDER[b]).map(k=>`${k} ${seen[k]}`).join(" · ");
+    setStatus("ok",`🟢 Live from ESPN · ${done} completed knockout games · updated ${now}<br><span style="color:var(--muted)">${br} — auto-refreshes every 3 min; you can still edit any dropdown manually.</span>${warn}`);
   }
   render();
 }
 function fallback(reason){
   GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
   syncSelects();
-  setStatus("err",`🟠 Couldn't reach the live feed (${reason}) — showing the built-in 6 Jul snapshot. Edit dropdowns manually or try Refresh.`);
+  setStatus("err",`🟠 Couldn't reach the live feed (${reason}) — showing the built-in 20 Jul snapshot (final standings). Edit dropdowns manually or try Refresh.`);
   render();
 }
 function syncSelects(){document.querySelectorAll("select").forEach(s=>{if(result[s.dataset.team]!==undefined)s.value=result[s.dataset.team];});}
@@ -1346,7 +1394,7 @@ updateProbNote();
 document.getElementById("snapBtn").onclick=()=>{
   GROUPS.forEach(([_,t])=>t.forEach(x=>result[x]=SNAPSHOT[x]||"none"));
   syncSelects();autoMode=false;
-  setStatus("err","⤺ Showing the built-in 6 Jul snapshot. Press Refresh for live ESPN data.");render();
+  setStatus("err","⤺ Showing the built-in 20 Jul snapshot — final standings. Press Refresh for live ESPN data.");render();
 };
 document.getElementById("resetBtn").onclick=()=>{
   Object.keys(result).forEach(t=>result[t]="none");
@@ -1407,16 +1455,32 @@ document.getElementById("shotBtn").onclick=()=>saveCardPNG("summaryCard","worldc
 document.getElementById("factShot").onclick=()=>saveCardPNG("factsCard","worldcup_facts_","World Cup fun facts");
 document.getElementById("factShuffle").onclick=()=>{FACT_SHUFFLE++;buildFacts();};
 
+// ===== TOURNAMENT COMPLETE — 19 Jul 2026 =====
+// Spain are champions, so every Opta reach probability is now a settled 0 or 100 and will never
+// move again. opta.json is still loaded ONCE so the frozen final numbers render, but the 30-min
+// re-poll is switched off: it can only ever re-fetch the same file. Set this to false if the
+// page is ever reused for another tournament — that restores all the live behaviour.
+const TOURNAMENT_OVER=true;
+
 document.getElementById("liveNote").innerHTML=
-  `<b>How it stays live:</b> When you open this page it pulls every World Cup 2026 knockout result from ESPN's public feed and auto-fills each team — losers get the points for the round they exited (R32 +5 → champion 120), and teams still playing count their guaranteed floor (R16 ≥15, etc.). It re-checks every 3 minutes while open, and the “Refresh” button forces an update. No PC scheduling needed — it’s fresh whenever the page is open and online. ` +
-  `<br><br><b>Notes:</b> Group-stage exits (−40) come from the built-in snapshot since ESPN's feed only names teams once a knockout game is played. If the feed is ever unreachable, it falls back to the saved snapshot and you can edit any dropdown by hand. Data: ESPN public sports feed.`;
+  (TOURNAMENT_OVER
+    ? `<b>🏁 Tournament complete — 19 Jul 2026.</b> Spain beat Argentina in the final; England beat France in the third-place play-off. These are the final standings, so the live auto-refresh and the Opta odds updater are switched off — nothing can change now. The page still pulls ESPN's feed once when you open it, and “↻ Refresh from ESPN now” works if you want to re-confirm. `
+    : `<b>How it stays live:</b> When you open this page it pulls every World Cup 2026 knockout result from ESPN's public feed and auto-fills each team — losers get the points for the round they exited (R32 +5 → champion 120), and teams still playing count their guaranteed floor (R16 ≥15, etc.). It re-checks every 3 minutes while open, and the “Refresh” button forces an update. No PC scheduling needed — it’s fresh whenever the page is open and online. `) +
+  `<br><br><b>Notes:</b> Group-stage exits (−40) come from the built-in 20 Jul snapshot since ESPN's feed only names teams once a knockout game is played. If the feed is unreachable, everything falls back to that snapshot — which now holds the final standings — and you can still edit any dropdown by hand. Data: ESPN public sports feed.`;
 
 restoreOpta();
 initChart();
 fetchLive();
 fetchOptaJson();
-setInterval(()=>{ if(autoMode) fetchLive(); }, 180000);
-setInterval(fetchOptaJson, 1800000); // re-check the site's opta.json every 30 min
+// While a tournament is live these poll unconditionally — note there is deliberately no
+// `if(autoMode)` guard on fetchLive: that older version let a single dropdown edit disable
+// polling permanently, leaving the page stale with no indication it had stopped.
+// Once the tournament is over neither results nor odds can change, so a single load on open
+// is enough and the timers are never armed. The ↻ Refresh button still works either way.
+if(!TOURNAMENT_OVER){
+  setInterval(fetchLive, 180000);
+  setInterval(fetchOptaJson, 1800000); // re-check the site's opta.json every 30 min
+}
 </script>
 </body>
 </html>
