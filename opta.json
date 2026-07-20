@@ -1,6 +1,6 @@
 {
-  "date": "19 Jul 2026, 08:03 UTC",
-  "generated_at": "2026-07-19T08:03:03.454Z",
+  "date": "20 Jul 2026, 02:12 UTC",
+  "generated_at": "2026-07-20T02:12:26.528Z",
   "source": "https://theanalyst.com/competition/fifa-world-cup/predictions",
   "teams": {
     "Spain": {
@@ -8,14 +8,7 @@
       "QF": 100,
       "SF": 100,
       "FIN": 100,
-      "CH": 59.5
-    },
-    "Argentina": {
-      "L16": 100,
-      "QF": 100,
-      "SF": 100,
-      "FIN": 100,
-      "CH": 40.5
+      "CH": 100
     },
     "Mexico": {
       "L16": 100,
@@ -169,6 +162,13 @@
       "QF": 0,
       "SF": 0,
       "FIN": 0,
+      "CH": 0
+    },
+    "Argentina": {
+      "L16": 100,
+      "QF": 100,
+      "SF": 100,
+      "FIN": 100,
       "CH": 0
     },
     "Austria": {
